@@ -15,17 +15,22 @@ export const useSupabase = (tableName, userId) => {
         if (!userId) return;
         setLoading(true);
         try {
+            console.log(`[useSupabase] Fetching from ${tableName} for userId: ${userId}`);
             const { data, error } = await supabase
                 .from(tableName)
                 .select('*')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                console.error(`[useSupabase] Error from ${tableName}:`, error);
+                throw error;
+            }
+            console.log(`[useSupabase] Success ${tableName} data count:`, data?.length || 0);
             setData(data || []);
         } catch (err) {
             setError(err.message);
-            console.error(`Error fetching ${tableName}:`, err);
+            console.error(`[useSupabase] Exception in ${tableName}:`, err);
         } finally {
             setLoading(false);
         }

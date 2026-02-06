@@ -106,13 +106,26 @@ const Health = ({ user }) => {
 
     useEffect(() => {
         const fetchSettings = async () => {
-            if (!user?.id) return;
+            if (!user?.id) {
+                console.warn('[Health] fetchSettings skipped: No user ID');
+                return;
+            }
+            console.log('[Health] Fetching settings for userId:', user.id);
             const { data, error } = await supabase
                 .from('health_settings')
                 .select('*')
                 .eq('user_id', user.id)
                 .single();
-            if (data) setSettingsState(data);
+
+            if (error) {
+                console.error('[Health] fetchSettings error:', error);
+            }
+            if (data) {
+                console.log('[Health] Settings found:', data);
+                setSettingsState(data);
+            } else {
+                console.log('[Health] No settings record found for user');
+            }
             setLoadingSettings(false);
         };
         fetchSettings();

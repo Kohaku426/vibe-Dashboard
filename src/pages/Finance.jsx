@@ -36,14 +36,26 @@ const Finance = ({ user }) => {
 
     useEffect(() => {
         const fetchBalances = async () => {
-            if (!user?.id) return;
+            if (!user?.id) {
+                console.warn('[Finance] fetchBalances skipped: No user ID');
+                return;
+            }
+            console.log('[Finance] Fetching balances for userId:', user.id);
             const { data, error } = await supabase
                 .from('finance_balances')
                 .select('*')
                 .eq('user_id', user.id)
                 .single();
 
-            if (data) setBalancesState({ cash: data.cash, bank: data.bank });
+            if (error) {
+                console.error('[Finance] fetchBalances error:', error);
+            }
+            if (data) {
+                console.log('[Finance] Balances found:', data);
+                setBalancesState({ cash: data.cash, bank: data.bank });
+            } else {
+                console.log('[Finance] No balance record found for user');
+            }
             setLoadingBalances(false);
         };
         fetchBalances();

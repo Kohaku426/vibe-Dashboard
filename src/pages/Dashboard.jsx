@@ -35,14 +35,8 @@ const Dashboard = ({ user }) => {
             setLoading(true);
             try {
                 // Parallel fetching
-                const [
-                    { data: todoData },
-                    { data: txnData },
-                    { data: wData },
-                    { data: mData },
-                    { data: workoutData },
-                    { data: careerData }
-                ] = await Promise.all([
+                console.log('[Dashboard] Starting parallel fetch for userId:', user.id);
+                const results = await Promise.all([
                     supabase.from('todos').select('*').eq('user_id', user.id),
                     supabase.from('finance_transactions').select('*').eq('user_id', user.id),
                     supabase.from('health_weights').select('*').eq('user_id', user.id),
@@ -51,6 +45,31 @@ const Dashboard = ({ user }) => {
                     supabase.from('career_jobs').select('*').eq('user_id', user.id)
                 ]);
 
+                const [
+                    { data: todoData, error: todoErr },
+                    { data: txnData, error: txnErr },
+                    { data: wData, error: wErr },
+                    { data: mData, error: mErr },
+                    { data: workoutData, error: workoutErr },
+                    { data: careerData, error: careerErr }
+                ] = results;
+
+                if (todoErr) console.error('[Dashboard] todos error:', todoErr);
+                if (txnErr) console.error('[Dashboard] finance_transactions error:', txnErr);
+                if (wErr) console.error('[Dashboard] health_weights error:', wErr);
+                if (mErr) console.error('[Dashboard] health_meals error:', mErr);
+                if (workoutErr) console.error('[Dashboard] health_workouts error:', workoutErr);
+                if (careerErr) console.error('[Dashboard] career_jobs error:', careerErr);
+
+                console.log('[Dashboard] Fetch results:', {
+                    todos: todoData?.length || 0,
+                    finance: txnData?.length || 0,
+                    weights: wData?.length || 0,
+                    meals: mData?.length || 0,
+                    workouts: workoutData?.length || 0,
+                    jobs: careerData?.length || 0
+                });
+
                 setTodos(todoData || []);
                 setFinance(txnData || []);
                 setWeights(wData || []);
@@ -58,7 +77,7 @@ const Dashboard = ({ user }) => {
                 setWorkouts(workoutData || []);
                 setJobsData(careerData || []);
             } catch (err) {
-                console.error('Error fetching dashboard data:', err);
+                console.error('[Dashboard] Exception in fetchDashboardData:', err);
             } finally {
                 setLoading(false);
             }
