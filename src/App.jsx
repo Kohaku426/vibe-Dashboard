@@ -13,7 +13,12 @@ import { supabase } from './lib/supabaseClient';
 import Auth from './components/auth/Auth';
 
 // Placeholder Pages
-// ... (Placeholder component remains the same)
+const Placeholder = ({ title }) => (
+  <div className="glass-card p-8 text-center min-h-[400px] flex flex-col items-center justify-center">
+    <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-pink-500 mb-4">{title}</h2>
+    <p className="text-gray-400">現在開発中です</p>
+  </div>
+);
 
 function App() {
   const [session, setSession] = React.useState(null);
