@@ -9,6 +9,8 @@ import {
 } from 'recharts';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { format, parseISO, isValid } from 'date-fns';
+import { useSupabase } from '../hooks/useSupabase';
+import { supabase } from '../lib/supabaseClient';
 
 const MEAL_CATEGORIES = [
     { id: 'breakfast', label: '朝食', icon: '🍳', color: 'text-yellow-400' },
@@ -76,8 +78,6 @@ const SafeChart = ({ data }) => {
     );
 };
 
-import { useSupabase } from '../hooks/useSupabase';
-import { supabase } from '../lib/supabaseClient';
 
 const Health = ({ user }) => {
     // --- SUPABASE HOOKS ---

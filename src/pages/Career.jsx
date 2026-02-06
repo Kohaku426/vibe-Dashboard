@@ -4,6 +4,8 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Plus, MoreHorizontal, Building2, Calendar, FileText, Trash2, Home } from 'lucide-react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import clsx from 'clsx';
+import { useSupabase } from '../hooks/useSupabase';
+import { supabase } from '../lib/supabaseClient';
 
 const COLUMNS = {
     entry: { id: 'entry', title: 'エントリー', color: 'border-gray-500' },
@@ -15,7 +17,6 @@ const COLUMNS = {
     offer: { id: 'offer', title: '内定', color: 'border-green-500' },
 };
 
-import { useSupabase } from '../hooks/useSupabase';
 
 const Career = ({ user }) => {
     // --- SUPABASE HOOK ---

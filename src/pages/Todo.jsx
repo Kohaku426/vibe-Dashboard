@@ -11,6 +11,8 @@ import {
 import useLocalStorage from '../hooks/useLocalStorage';
 import { format, parseISO, isValid, isPast, isToday, isTomorrow } from 'date-fns';
 import clsx from 'clsx';
+import { useSupabase } from '../hooks/useSupabase';
+import { supabase } from '../lib/supabaseClient';
 
 // --- CONSTANTS ---
 const DEFAULT_TAGS = [

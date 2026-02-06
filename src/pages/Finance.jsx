@@ -7,6 +7,8 @@ import {
 import { Plus, Trash2, TrendingUp, TrendingDown, Wallet, PieChart as PieChartIcon, Home, CreditCard, Settings, X, Save, DollarSign } from 'lucide-react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { format, subMonths, isAfter, isBefore, addMonths, setDate, startOfDay, endOfDay, differenceInMinutes, parse, startOfMonth, endOfMonth } from 'date-fns';
+import { useSupabase } from '../hooks/useSupabase';
+import { supabase } from '../lib/supabaseClient';
 
 const CATEGORIES = [
     { name: '食費', color: '#ec4899' },
@@ -18,8 +20,6 @@ const CATEGORIES = [
     { name: 'その他', color: '#64748b' },
 ];
 
-import { useSupabase } from '../hooks/useSupabase';
-import { supabase } from '../lib/supabaseClient';
 
 const Finance = ({ user }) => {
     // --- SUPABASE: TRANSACTIONS ---
