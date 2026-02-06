@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
     Plus, Trash2, Activity, Scale, Utensils, Flame, ChevronRight, Home, ChevronDown, ChevronUp, Search, X
@@ -22,6 +22,13 @@ const DEFAULT_EXERCISES = [
     "ランニング", "サイクリング", "エリプティカル", "HIIT"
 ];
 
+// Fallback food history if no previous meals exist
+const DEFAULT_FOOD_HISTORY = [
+    { name: 'サラダ', calories: 150, protein: 5, fat: 8, carbs: 10 },
+    { name: '鶏胸肉ステーキ', calories: 350, protein: 45, fat: 12, carbs: 2 },
+    { name: 'プロテイン', calories: 120, protein: 24, fat: 1, carbs: 3 }
+];
+
 const SafeChart = ({ data }) => {
     if (!data || data.length === 0) {
         return (
@@ -31,7 +38,6 @@ const SafeChart = ({ data }) => {
         );
     }
 
-    // Double check data validity
     const safeData = data.filter(item => item && item.date && !isNaN(item.weight));
 
     return (
@@ -44,7 +50,6 @@ const SafeChart = ({ data }) => {
                     fontSize={12}
                     tickFormatter={(str) => {
                         if (!str) return '';
-                        // Simple robust formatter
                         return str.length > 5 ? str.slice(5) : str;
                     }}
                 />
@@ -147,16 +152,17 @@ const Health = ({ user }) => {
 
     // --- Calculated Data ---
     const latestWeight = useMemo(() => {
-        if (weights.length === 0) return '--';
+        if (!weights || weights.length === 0) return '--';
         return weights[weights.length - 1].weight || '--';
     }, [weights]);
 
     const latestBfp = useMemo(() => {
-        if (weights.length === 0) return '--';
+        if (!weights || weights.length === 0) return '--';
         return weights[weights.length - 1].bfp || '--';
     }, [weights]);
 
     const weightChartData = useMemo(() => {
+        if (!weights) return [];
         return weights
             .filter(w => w && w.date && w.weight)
             .sort((a, b) => new Date(a.date) - new Date(b.date))
@@ -166,6 +172,7 @@ const Health = ({ user }) => {
     const todayStr = new Date().toISOString().split('T')[0];
 
     const todayMeals = useMemo(() => {
+        if (!meals) return [];
         return meals.filter(m => m && m.date && m.date.startsWith(todayStr));
     }, [meals, todayStr]);
 
@@ -177,6 +184,27 @@ const Health = ({ user }) => {
             carbs: acc.carbs + (Number(m.carbs) || 0)
         }), { calories: 0, protein: 0, fat: 0, carbs: 0 });
     }, [todayMeals]);
+
+    const foodHistory = useMemo(() => {
+        const uniqueMeals = [];
+        const seen = new Set();
+
+        if (meals) {
+            meals.forEach(m => {
+                if (m.name && !seen.has(m.name.toLowerCase())) {
+                    uniqueMeals.push({ name: m.name, calories: m.calories, protein: m.protein, fat: m.fat, carbs: m.carbs });
+                    seen.add(m.name.toLowerCase());
+                }
+            });
+        }
+
+        return uniqueMeals.length > 0 ? uniqueMeals : DEFAULT_FOOD_HISTORY;
+    }, [meals]);
+
+    const exercises = useMemo(() => {
+        const uniqueWorkouts = workouts ? new Set(workouts.map(w => w.exercise)) : new Set();
+        return Array.from(new Set([...DEFAULT_EXERCISES, ...uniqueWorkouts]));
+    }, [workouts]);
 
     // --- Handlers ---
     const handleWeightSubmit = async (e) => {
@@ -297,9 +325,9 @@ const Health = ({ user }) => {
                             <SafeChart data={weightChartData} />
                         </div>
                         <form onSubmit={handleWeightSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <input type="date" value={weightForm.date} onChange={e => setWeightForm({ ...weightForm, date: e.target.value })} className="input-dark" required />
-                            <input type="number" step="0.1" placeholder="体重 (kg)" value={weightForm.weight} onChange={e => setWeightForm({ ...weightForm, weight: e.target.value })} className="input-dark" required />
-                            <input type="number" step="0.1" placeholder="体脂肪率 (%)" value={weightForm.bfp} onChange={e => setWeightForm({ ...weightForm, bfp: e.target.value })} className="input-dark" />
+                            <input type="date" value={weightForm.date} onChange={e => setWeightForm({ ...weightForm, date: e.target.value })} className="input-dark w-full" required />
+                            <input type="number" step="0.1" placeholder="体重 (kg)" value={weightForm.weight} onChange={e => setWeightForm({ ...weightForm, weight: e.target.value })} className="input-dark w-full" required />
+                            <input type="number" step="0.1" placeholder="体脂肪率 (%)" value={weightForm.bfp} onChange={e => setWeightForm({ ...weightForm, bfp: e.target.value })} className="input-dark w-full" />
                             <button type="submit" className="md:col-span-3 btn-primary">記録する</button>
                         </form>
                     </div>
@@ -394,9 +422,16 @@ const Health = ({ user }) => {
                                 />
                                 {showFoodSearch && searchTerm && (
                                     <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/10 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto">
-                                        {foodHistory.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 5).map((item, idx) => (
+                                        {foodHistory.filter(f => f.name && f.name.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 5).map((item, idx) => (
                                             <button key={idx} onClick={() => {
-                                                setMealForm({ ...mealForm, ...item });
+                                                setMealForm({
+                                                    ...mealForm,
+                                                    name: item.name,
+                                                    calories: item.calories || '',
+                                                    protein: item.protein || '',
+                                                    fat: item.fat || '',
+                                                    carbs: item.carbs || ''
+                                                });
                                                 setShowFoodSearch(false);
                                             }} className="w-full text-left px-3 py-2 hover:bg-white/10 text-xs text-gray-300">
                                                 {item.name} ({item.calories}kcal)
@@ -456,7 +491,7 @@ const Health = ({ user }) => {
                         </div>
 
                         <div className="mt-4 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                            {workouts.slice(0, 5).map(w => (
+                            {workouts && workouts.slice(0, 5).map(w => (
                                 <div key={w.id} className="p-2 rounded bg-white/5 flex justify-between items-center text-xs">
                                     <span className="text-gray-300">{w.exercise}</span>
                                     <button onClick={() => deleteWorkout(w.id)} className="text-gray-600 hover:text-red-400"><X size={12} /></button>
@@ -483,7 +518,7 @@ const Health = ({ user }) => {
                                 {[{ id: 'goalWeight', label: '目標体重' }, { id: 'goalCalories', label: '目標カロリー' }, { id: 'goalProtein', label: '目標タンパク質' }, { id: 'goalFat', label: '目標脂質' }, { id: 'goalCarbs', label: '目標炭水化物' }].map(f => (
                                     <div key={f.id}>
                                         <label className="text-[10px] text-gray-500 uppercase">{f.label}</label>
-                                        <input type="number" value={settings[f.id] || ''} onChange={e => setSettings({ ...settings, [f.id]: e.target.value })} className="input-dark w-full" />
+                                        <input type="number" value={settings[f.id] || ''} onChange={e => setSettingsState({ ...settings, [f.id]: e.target.value })} className="input-dark w-full" />
                                     </div>
                                 ))}
                             </div>

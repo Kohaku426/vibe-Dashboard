@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
@@ -86,7 +86,7 @@ const Finance = ({ user }) => {
 
     const handleBalanceChange = (e) => {
         const { name, value } = e.target;
-        setBalances(prev => ({ ...prev, [name]: Number(value) }));
+        setBalancesState(prev => ({ ...prev, [name]: Number(value) }));
     };
 
     const addTransaction = async (e) => {

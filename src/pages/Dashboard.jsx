@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
     TrendingUp, TrendingDown, CheckSquare, Clock,
@@ -28,7 +28,10 @@ const Dashboard = ({ user }) => {
 
     React.useEffect(() => {
         const fetchDashboardData = async () => {
-            if (!user?.id) return;
+            if (!user?.id) {
+                setLoading(false);
+                return;
+            }
             setLoading(true);
             try {
                 // Parallel fetching
@@ -243,6 +246,15 @@ const Dashboard = ({ user }) => {
         window.open(url, '_blank');
         setGeminiPrompt('');
     };
+
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+                <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+                <p className="text-gray-400 animate-pulse">データを同期中...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">
