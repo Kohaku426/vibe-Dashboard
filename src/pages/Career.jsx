@@ -33,7 +33,25 @@ const Career = ({ user }) => {
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState(null);
     const [newJob, setNewJob] = useState({ company: '', date: '', memo: '', url: '', login_id: '' });
+
+    const handleSelectJob = (job) => {
+        setSelectedJob(job);
+        setEditForm({ ...job });
+        setIsEditing(false);
+    };
+
+    const handleUpdateJob = async () => {
+        try {
+            await updateJob(selectedJob.id, editForm);
+            setSelectedJob({ ...editForm });
+            setIsEditing(false);
+        } catch (err) {
+            alert('更新に失敗しました');
+        }
+    };
 
     const onDragEnd = async (result) => {
         const { source, destination, draggableId } = result;
@@ -114,7 +132,7 @@ const Career = ({ user }) => {
                                                             ref={provided.innerRef}
                                                             {...provided.draggableProps}
                                                             {...provided.dragHandleProps}
-                                                            onClick={() => setSelectedJob(job)}
+                                                            onClick={() => handleSelectJob(job)}
                                                             className={clsx(
                                                                 "bg-gray-800 p-4 rounded-xl border border-white/5 shadow-md group hover:border-blue-500/40 transition-all cursor-pointer relative",
                                                                 snapshot.isDragging && "rotate-2 scale-105 z-50 ring-2 ring-blue-500/50"
@@ -148,39 +166,99 @@ const Career = ({ user }) => {
             {selectedJob && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in overflow-y-auto">
                     <div className="glass-card w-full max-w-lg p-8 relative overflow-hidden border-t-4 border-blue-500 my-auto">
-                        <button onClick={() => setSelectedJob(null)} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors"><X size={24} /></button>
+                        <div className="absolute top-6 right-6 flex items-center gap-2">
+                            <button onClick={() => setIsEditing(!isEditing)} className={clsx("p-2 rounded-lg transition-all", isEditing ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white")}><Edit2 size={20} /></button>
+                            <button onClick={() => setSelectedJob(null)} className="text-gray-400 hover:text-white transition-colors"><X size={24} /></button>
+                        </div>
 
                         <div className="mb-8">
-                            <h2 className="text-3xl font-bold text-white mb-2">{selectedJob.company}</h2>
-                            <span className={clsx("px-3 py-1 rounded-full text-xs font-bold border", COLUMNS[selectedJob.status].color.replace('border-', 'text-').replace('border-', 'border-'))}>
-                                {COLUMNS[selectedJob.status].title}
-                            </span>
+                            {isEditing ? (
+                                <div className="flex flex-col gap-2 w-full">
+                                    <input
+                                        type="text"
+                                        value={editForm.company}
+                                        onChange={e => setEditForm({ ...editForm, company: e.target.value })}
+                                        className="text-3xl font-bold bg-transparent text-white border-b border-white/10 w-full focus:outline-none focus:border-blue-500 pb-1"
+                                    />
+                                    <select
+                                        value={editForm.status}
+                                        onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                                        className="mt-2 bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-fit"
+                                    >
+                                        {Object.entries(COLUMNS).map(([id, col]) => (
+                                            <option key={id} value={id}>{col.title}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : (
+                                <>
+                                    <h2 className="text-3xl font-bold text-white mb-2">{selectedJob.company}</h2>
+                                    <span className={clsx("px-3 py-1 rounded-full text-xs font-bold border block w-fit mt-2", COLUMNS[selectedJob.status].color.replace('border-', 'text-').replace('border-', 'border-'))}>
+                                        {COLUMNS[selectedJob.status].title}
+                                    </span>
+                                </>
+                            )}
                         </div>
 
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <section className="p-4 bg-white/5 rounded-2xl border border-white/5">
                                     <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2 flex items-center gap-1"><Calendar size={12} /> 日付</p>
-                                    <p className="text-white text-sm">{selectedJob.date || '未設定'}</p>
+                                    {isEditing ? (
+                                        <input
+                                            type="date"
+                                            value={editForm.date || ''}
+                                            onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                                            className="w-full input-dark px-3 py-2 text-sm"
+                                        />
+                                    ) : (
+                                        <p className="text-white text-sm">{selectedJob.date || '未設定'}</p>
+                                    )}
                                 </section>
                                 <section className="p-4 bg-white/5 rounded-2xl border border-white/5">
                                     <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2 flex items-center gap-1"><User size={12} /> ログインID</p>
-                                    <p className="text-white text-sm font-mono">{selectedJob.login_id || '未登録'}</p>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={editForm.login_id || ''}
+                                            onChange={e => setEditForm({ ...editForm, login_id: e.target.value })}
+                                            className="w-full input-dark px-3 py-2 text-sm font-mono"
+                                        />
+                                    ) : (
+                                        <p className="text-white text-sm font-mono">{selectedJob.login_id || '未登録'}</p>
+                                    )}
                                 </section>
                             </div>
 
                             <section className="p-4 bg-white/5 rounded-2xl border border-white/5">
                                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2 flex items-center gap-1"><ExternalLink size={12} /> 採用ページ</p>
-                                {selectedJob.url ? (
-                                    <a href={selectedJob.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors text-sm break-all flex items-center gap-2 underline underline-offset-4 decoration-blue-500/30">
-                                        {selectedJob.url} <ArrowRight size={14} />
-                                    </a>
-                                ) : <p className="text-gray-600 text-sm">未設定</p>}
+                                {isEditing ? (
+                                    <input
+                                        type="url"
+                                        value={editForm.url || ''}
+                                        onChange={e => setEditForm({ ...editForm, url: e.target.value })}
+                                        className="w-full input-dark px-3 py-2 text-sm"
+                                        placeholder="https://..."
+                                    />
+                                ) : (
+                                    selectedJob.url ? (
+                                        <a href={selectedJob.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors text-sm break-all flex items-center gap-2 underline underline-offset-4 decoration-blue-500/30">
+                                            {selectedJob.url} <ArrowRight size={14} />
+                                        </a>
+                                    ) : <p className="text-gray-600 text-sm">未設定</p>
+                                )}
                             </section>
-
                             <section className="p-4 bg-white/5 rounded-2xl border border-white/5">
                                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2 flex items-center gap-1"><FileText size={12} /> メモ</p>
-                                <div className="text-gray-300 text-sm whitespace-pre-wrap max-h-40 overflow-y-auto custom-scrollbar italic">{selectedJob.memo || 'メモはありません'}</div>
+                                {isEditing ? (
+                                    <textarea
+                                        value={editForm.memo || ''}
+                                        onChange={e => setEditForm({ ...editForm, memo: e.target.value })}
+                                        className="w-full input-dark px-3 py-2 text-sm h-32 resize-none"
+                                    />
+                                ) : (
+                                    <div className="text-gray-300 text-sm whitespace-pre-wrap max-h-40 overflow-y-auto custom-scrollbar italic">{selectedJob.memo || 'メモはありません'}</div>
+                                )}
                             </section>
                         </div>
 
@@ -192,9 +270,19 @@ const Career = ({ user }) => {
                             >
                                 <Trash2 size={20} />
                             </button>
-                            <button onClick={() => setSelectedJob(null)} className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-bold transition-all text-sm">
-                                閉じる
-                            </button>
+
+                            {isEditing ? (
+                                <button
+                                    onClick={handleUpdateJob}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2"
+                                >
+                                    <Save size={18} /> 変更を保存
+                                </button>
+                            ) : (
+                                <button onClick={() => setSelectedJob(null)} className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-bold transition-all text-sm">
+                                    閉じる
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

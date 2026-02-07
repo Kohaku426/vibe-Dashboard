@@ -25,6 +25,7 @@ const Dashboard = ({ user }) => {
     const [jobsData, setJobsData] = useState([]);
     const [calendarEvents, setCalendarEvents] = useState([]);
     const [calendarCategories, setCalendarCategories] = useState([]);
+    const [shiftsData, setShiftsData] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -43,12 +44,14 @@ const Dashboard = ({ user }) => {
                     supabase.from('health_workouts').select('*').eq('user_id', user.id),
                     supabase.from('career_jobs').select('*').eq('user_id', user.id),
                     supabase.from('calendar_events').select('*').eq('user_id', user.id),
-                    supabase.from('calendar_categories').select('*').eq('user_id', user.id)
+                    supabase.from('calendar_categories').select('*').eq('user_id', user.id),
+                    supabase.from('work_shifts').select('*').eq('user_id', user.id)
                 ]);
 
                 const [
                     { data: todoData }, { data: txnData }, { data: wData }, { data: mData },
-                    { data: workoutData }, { data: careerData }, { data: calData }, { data: catData }
+                    { data: workoutData }, { data: careerData }, { data: calData }, { data: catData },
+                    { data: sData }
                 ] = results;
 
                 setTodos(todoData || []);
@@ -59,6 +62,7 @@ const Dashboard = ({ user }) => {
                 setJobsData(careerData || []);
                 setCalendarEvents(calData || []);
                 setCalendarCategories(catData || []);
+                setShiftsData(sData || []);
             } catch (err) {
                 console.error('[Dashboard] fetch error:', err);
             } finally {
@@ -153,6 +157,11 @@ const Dashboard = ({ user }) => {
         return up[0] || null;
     }, [jobsData, today]);
 
+    const nextShift = useMemo(() => {
+        const up = shiftsData.filter(s => isAfter(parseISO(s.date), today)).sort((a, b) => new Date(a.date) - new Date(b.date));
+        return up[0] || null;
+    }, [shiftsData, today]);
+
     const handleGeminiSearch = (e, pOverride) => {
         if (e) e.preventDefault();
         const q = pOverride || geminiPrompt;
@@ -222,11 +231,15 @@ const Dashboard = ({ user }) => {
                         {eachDayOfInterval({ start: startOfWeek(startOfMonth(today)), end: endOfWeek(endOfMonth(today)) }).map((day, i) => {
                             const dKey = format(day, 'yyyy-MM-dd');
                             const dayEvents = calendarEvents.filter(e => e.date === dKey);
+                            const dayShift = shiftsData.find(s => s.date === dKey);
                             const isCurMonth = isSameMonth(day, today);
                             return (
                                 <Link key={i} to="/calendar" className={clsx("relative p-1 rounded-md transition-all border border-transparent flex flex-col gap-0.5 min-h-[45px] overflow-hidden", !isCurMonth && "opacity-20 grayscale", isToday(day) ? "bg-blue-500/10 border-blue-500/20" : "hover:bg-white/5")}>
                                     <span className={clsx("text-[9px] font-bold self-end", isToday(day) ? "text-blue-400" : "text-gray-500")}>{format(day, 'd')}</span>
                                     <div className="flex-1 flex flex-wrap gap-0.5 mt-auto">
+                                        {dayShift && (
+                                            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]" title="Shift" />
+                                        )}
                                         {dayEvents.slice(0, 3).map(e => {
                                             const cat = calendarCategories.find(c => c.id === e.category_id);
                                             return <div key={e.id} className={clsx("w-1.5 h-1.5 rounded-full", cat?.color || "bg-gray-500")} title={e.title} />;
@@ -279,20 +292,34 @@ const Dashboard = ({ user }) => {
                 </div>
 
                 {/* Career */}
+                {/* Career & Work Shift */}
                 <div className="glass-card p-6 relative group bg-gradient-to-br from-gray-900/60 to-blue-900/20 flex flex-col justify-between">
                     <div>
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4"><Briefcase size={20} className="text-blue-300" /> Career</h3>
-                        {nextCareerEvent ? (
-                            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                                <p className="text-[9px] text-blue-400 font-bold uppercase mb-1">Coming Up</p>
-                                <p className="text-sm font-bold text-white truncate">{nextCareerEvent.company}</p>
-                                <p className="text-[10px] text-blue-300 mt-1 flex items-center gap-1"><CalendarIcon size={10} /> {format(parseISO(nextCareerEvent.date), 'M月d日')}</p>
-                            </div>
-                        ) : (
-                            <div className="text-center py-6 text-xs text-gray-600 italic">No events</div>
-                        )}
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4"><Briefcase size={20} className="text-blue-300" /> Career & Work</h3>
+                        <div className="space-y-3">
+                            {nextCareerEvent ? (
+                                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                                    <p className="text-[9px] text-blue-400 font-bold uppercase mb-1">Upcoming Job Event</p>
+                                    <p className="text-sm font-bold text-white truncate">{nextCareerEvent.company}</p>
+                                    <p className="text-[10px] text-blue-300 mt-1 flex items-center gap-1"><CalendarIcon size={10} /> {format(parseISO(nextCareerEvent.date), 'M月d日')}</p>
+                                </div>
+                            ) : null}
+                            {nextShift ? (
+                                <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                                    <p className="text-[9px] text-green-400 font-bold uppercase mb-1">Next Work Shift</p>
+                                    <p className="text-sm font-bold text-white">{nextShift.start} - {nextShift.end}</p>
+                                    <p className="text-[10px] text-green-300 mt-1 flex items-center gap-1"><Clock size={10} /> {format(parseISO(nextShift.date), 'M月d日 (EEE)')}</p>
+                                </div>
+                            ) : null}
+                            {!nextCareerEvent && !nextShift && (
+                                <div className="text-center py-6 text-xs text-gray-600 italic">No upcoming events</div>
+                            )}
+                        </div>
                     </div>
-                    <Link to="/career" className="mt-4 inline-block text-[10px] text-gray-500 hover:text-white">Job Progress</Link>
+                    <div className="flex gap-4 mt-4">
+                        <Link to="/career" className="text-[10px] text-gray-500 hover:text-white">Job Progress</Link>
+                        <Link to="/calendar" className="text-[10px] text-gray-500 hover:text-white">Calendar</Link>
+                    </div>
                 </div>
             </div>
         </div>

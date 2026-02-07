@@ -267,15 +267,18 @@ const Calendar = ({ user }) => {
                                     )}>{format(day, 'd')}</span>
 
                                     <div className="flex-1 overflow-hidden space-y-0.5">
+                                        {dayShift && (
+                                            <div className="text-[8px] px-1 rounded truncate text-white border-l-2 border-green-500 bg-green-500/20 font-bold">
+                                                {dayShift.start}-{dayShift.end}
+                                            </div>
+                                        )}
                                         {dayEvents.slice(0, 2).map(e => (
                                             <div key={e.id} className={clsx("text-[8px] px-1 rounded truncate text-white border-l-2", getCategoryColor(e.category_id), "bg-white/10")}>
                                                 {e.title}
                                             </div>
                                         ))}
-                                        {dayEvents.length > 2 && <div className="text-[7px] text-gray-500 text-center">+{dayEvents.length - 2} items</div>}
+                                        {(dayEvents.length + (dayShift ? 1 : 0)) > 3 && <div className="text-[7px] text-gray-500 text-center">+{dayEvents.length + (dayShift ? 1 : 0) - 3} items</div>}
                                     </div>
-
-                                    {dayShift && <div className="mt-auto h-1 bg-green-500 rounded-full" />}
                                 </div>
                             );
                         })}

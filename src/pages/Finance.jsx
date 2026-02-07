@@ -87,8 +87,10 @@ const Finance = ({ user }) => {
     };
 
     // Work Data
-    const [shiftsData] = useLocalStorage('work_shifts', []);
-    const shifts = Array.isArray(shiftsData) ? shiftsData : [];
+    const {
+        data: shifts = [],
+        loading: loadingShifts
+    } = useSupabase('work_shifts', user?.id);
 
     const [workSettingsData] = useLocalStorage('work_settings', { hourlyRate: 1200, transport: 1000 });
     const workSettings = workSettingsData || { hourlyRate: 1200, transport: 1000 };
@@ -147,6 +149,7 @@ const Finance = ({ user }) => {
 
     // 0. Estimated Salary (Current Month)
     const estimatedSalary = useMemo(() => {
+        if (!shifts || shifts.length === 0) return 0;
         const today = new Date();
         const start = format(startOfMonth(today), 'yyyy-MM-dd');
         const end = format(endOfMonth(today), 'yyyy-MM-dd');
@@ -156,9 +159,10 @@ const Finance = ({ user }) => {
         const total = currentMonthShifts.reduce((sum, s) => {
             const startTime = parse(s.start, 'HH:mm', new Date());
             const endTime = parse(s.end, 'HH:mm', new Date());
+            if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) return sum;
             let minutes = differenceInMinutes(endTime, startTime);
             if (minutes < 0) minutes += 24 * 60;
-            const workMinutes = Math.max(0, minutes - s.break);
+            const workMinutes = Math.max(0, minutes - (s.break || 0));
             const hours = workMinutes / 60;
             return sum + Math.floor(hours * workSettings.hourlyRate) + workSettings.transport;
         }, 0);
