@@ -146,8 +146,8 @@ const Career = ({ user }) => {
 
             {/* Detail Modal (The "Mini Page") */}
             {selectedJob && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-                    <div className="glass-card w-full max-w-lg p-8 relative overflow-hidden border-t-4 border-blue-500">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in overflow-y-auto">
+                    <div className="glass-card w-full max-w-lg p-8 relative overflow-hidden border-t-4 border-blue-500 my-auto">
                         <button onClick={() => setSelectedJob(null)} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors"><X size={24} /></button>
 
                         <div className="mb-8">
@@ -185,7 +185,14 @@ const Career = ({ user }) => {
                         </div>
 
                         <div className="mt-8 flex gap-3">
-                            <button onClick={() => setSelectedJob(null)} className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-bold transition-all">
+                            <button
+                                onClick={(e) => deleteJob(selectedJob.id, e)}
+                                className="px-4 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all flex items-center justify-center"
+                                title="削除"
+                            >
+                                <Trash2 size={20} />
+                            </button>
+                            <button onClick={() => setSelectedJob(null)} className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-bold transition-all text-sm">
                                 閉じる
                             </button>
                         </div>

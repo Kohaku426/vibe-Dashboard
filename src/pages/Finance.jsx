@@ -10,7 +10,7 @@ import { format, subMonths, isAfter, isBefore, addMonths, setDate, startOfDay, e
 import { useSupabase } from '../hooks/useSupabase';
 import { supabase } from '../lib/supabaseClient';
 
-const CATEGORIES = [
+const FALLBACK_CATEGORIES = [
     { name: '食費', color: '#ec4899' },
     { name: '交通費', color: '#8b5cf6' },
     { name: '娯楽', color: '#3b82f6' },
@@ -29,6 +29,19 @@ const Finance = ({ user }) => {
         addData: addTxn,
         deleteData: removeTxn
     } = useSupabase('finance_transactions', user?.id);
+
+    // --- SUPABASE: CATEGORIES ---
+    const {
+        data: categoriesData,
+        loading: loadingCats,
+        addData: addCategory,
+        deleteData: removeCategory
+    } = useSupabase('finance_categories', user?.id);
+
+    const categories = useMemo(() => {
+        if (categoriesData && categoriesData.length > 0) return categoriesData;
+        return FALLBACK_CATEGORIES;
+    }, [categoriesData]);
 
     // --- SUPABASE: BALANCES (Single Row) ---
     const [balances, setBalancesState] = useState({ cash: 0, bank: 0 });
@@ -81,13 +94,14 @@ const Finance = ({ user }) => {
     const workSettings = workSettingsData || { hourlyRate: 1200, transport: 1000 };
 
     const [showSettings, setShowSettings] = useState(false);
+    const [newCat, setNewCat] = useState({ name: '', color: '#3b82f6' });
 
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
         item: '',
         amount: '',
         type: 'expense', // 'income' or 'expense'
-        category: 'Food',
+        category: '食費',
         method: 'cash' // 'cash', 'smbc', 'jcb', 'olive'
     });
 
@@ -259,9 +273,9 @@ const Finance = ({ user }) => {
         return Object.keys(categoryTotals).map(cat => ({
             name: cat,
             value: categoryTotals[cat],
-            color: CATEGORIES.find(c => c.name === cat)?.color || '#94a3b8'
+            color: categories.find(c => c.name === cat)?.color || '#94a3b8'
         }));
-    }, [transactions]);
+    }, [transactions, categories]);
 
     // Monthly Expense Data for Bar Chart
     const monthlyData = useMemo(() => {
@@ -364,6 +378,49 @@ const Finance = ({ user }) => {
                                     onChange={(e) => setBalancesState({ ...balances, bank: Number(e.target.value) })}
                                     className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
+                            </div>
+
+                            {/* Category Management */}
+                            <div className="pt-4 border-t border-white/10">
+                                <label className="text-xs text-gray-500 uppercase block mb-3 font-bold">カテゴリー管理</label>
+                                <div className="space-y-2 mb-4 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                                    {categoriesData && categoriesData.map(cat => (
+                                        <div key={cat.id} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                                                <span className="text-xs text-white">{cat.name}</span>
+                                            </div>
+                                            <button onClick={() => removeCategory(cat.id)} className="text-gray-500 hover:text-red-400 p-1 transition-colors"><Trash2 size={14} /></button>
+                                        </div>
+                                    ))}
+                                    {(!categoriesData || categoriesData.length === 0) && (
+                                        <p className="text-[10px] text-gray-500 italic">カスタムカテゴリーはありません（デフォルトを使用中）</p>
+                                    )}
+                                </div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="新規名"
+                                        value={newCat.name}
+                                        onChange={e => setNewCat({ ...newCat, name: e.target.value })}
+                                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
+                                    <input
+                                        type="color"
+                                        value={newCat.color}
+                                        onChange={e => setNewCat({ ...newCat, color: e.target.value })}
+                                        className="w-8 h-8 rounded border-none bg-transparent cursor-pointer p-0"
+                                    />
+                                    <button
+                                        onClick={async () => {
+                                            if (newCat.name) {
+                                                await addCategory({ name: newCat.name, color: newCat.color });
+                                                setNewCat({ name: '', color: '#3b82f6' });
+                                            }
+                                        }}
+                                        className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-blue-500/30 font-mono"
+                                    >ADD</button>
+                                </div>
                             </div>
                             <div className="pt-4 flex justify-end">
                                 <button
@@ -632,8 +689,8 @@ const Finance = ({ user }) => {
                                     onChange={handleInputChange}
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all [&>option]:bg-gray-900"
                                 >
-                                    {CATEGORIES.map(cat => (
-                                        <option key={cat.name} value={cat.name}>{cat.name}</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id || cat.name} value={cat.name}>{cat.name}</option>
                                     ))}
                                 </select>
                             </div>
