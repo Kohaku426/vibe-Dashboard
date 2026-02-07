@@ -60,7 +60,8 @@ const Career = ({ user }) => {
             setNewJob({ company: '', date: '', memo: '', url: '', login_id: '' });
             setIsAddModalOpen(false);
         } catch (err) {
-            alert('追加に失敗しました');
+            console.error('[Career] addJob error:', err);
+            alert('追加に失敗しました: ' + (err.message || err.details || '不明なエラー'));
         }
     };
 

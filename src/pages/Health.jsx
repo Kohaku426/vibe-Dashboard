@@ -161,6 +161,7 @@ const Health = ({ user }) => {
         sets: [{ weight: '', reps: '', memo: '' }],
         time: '', speed: '', incline: ''
     });
+    const [searchDate, setSearchDate] = useState(new Date().toISOString().split('T')[0]);
 
     const addSetToForm = () => {
         setWorkoutForm(prev => ({
@@ -525,17 +526,33 @@ const Health = ({ user }) => {
 
                     {/* Workouts Section */}
                     <div className="glass-card p-6">
-                        <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
-                            <Flame className="text-red-400" size={20} /> 今日のトレーニング
-                        </h2>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <Flame className="text-red-400" size={20} /> トレーニング検索
+                            </h2>
+                            <div className="flex items-center gap-2 bg-black/20 p-1 rounded-lg border border-white/5">
+                                <Search size={14} className="text-gray-500 ml-2" />
+                                <input
+                                    type="date"
+                                    value={searchDate}
+                                    onChange={e => setSearchDate(e.target.value)}
+                                    className="bg-transparent text-sm text-white focus:outline-none p-1 font-mono"
+                                />
+                            </div>
+                        </div>
 
                         <div className="space-y-6">
                             {(() => {
-                                const todayWorkouts = workouts.filter(w => w.date === todayStr);
-                                if (todayWorkouts.length === 0) return <p className="text-center text-gray-500 py-4">今日のトレーニングはまだありません。</p>;
+                                const dayWorkouts = workouts.filter(w => w.date === searchDate);
+                                if (dayWorkouts.length === 0) return (
+                                    <div className="text-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10">
+                                        <Activity size={32} className="mx-auto text-gray-700 mb-2 opacity-20" />
+                                        <p className="text-sm text-gray-500">{searchDate} の記録はありません</p>
+                                    </div>
+                                );
 
                                 // Group by exercise
-                                const grouped = todayWorkouts.reduce((acc, w) => {
+                                const grouped = dayWorkouts.reduce((acc, w) => {
                                     if (!acc[w.exercise]) acc[w.exercise] = [];
                                     acc[w.exercise].push(w);
                                     return acc;
@@ -813,20 +830,6 @@ const Health = ({ user }) => {
                                     <button onClick={() => { setIsTimerRunning(false); setTimer(0); }} className="px-4 py-1.5 text-[10px] font-bold bg-red-900/10 rounded-lg border border-red-500/20 text-red-500 hover:bg-red-900/20 transition-all">STOP</button>
                                 </div>
                             )}
-
-                            {/* Recent Items Preview */}
-                            <div className="mt-6 pt-6 border-t border-white/5 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                <h4 className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2 px-1 font-mono">Recent Logs</h4>
-                                {workouts && workouts.slice(0, 5).map(w => (
-                                    <div key={w.id} className="p-3 rounded-xl bg-white/5 flex justify-between items-center group hover:bg-white/10 transition-all border border-transparent hover:border-white/10">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-white">{w.exercise}</span>
-                                            <span className="text-[10px] text-gray-500 font-mono">{w.date} • {w.type === 'strength' ? `${w.weight}kg × ${w.reps}` : `${w.time}min`}</span>
-                                        </div>
-                                        <button onClick={() => deleteWorkout(w.id)} className="text-gray-700 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
                     </div>
                 </div>
