@@ -349,8 +349,7 @@ const Health = ({ user }) => {
                         exercise: exerciseName,
                         weight: parseFloat(set.weight),
                         reps: parseInt(set.reps),
-                        sets: 1, // Store as 1 set record
-                        memo: set.memo || null
+                        sets: 1 // Store as 1 set record
                     });
                 }
                 startTimer(60); // Auto start rest timer
