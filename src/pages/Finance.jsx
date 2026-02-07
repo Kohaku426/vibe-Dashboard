@@ -86,13 +86,13 @@ const Finance = ({ user }) => {
         }
     };
 
-    // Work Data
+    // Work Data & Settings (Sync with Calendar)
     const {
         data: shifts = [],
         loading: loadingShifts
     } = useSupabase('work_shifts', user?.id);
 
-    const [workSettingsData] = useLocalStorage('work_settings', { hourlyRate: 1200, transport: 1000 });
+    const [workSettingsData] = useLocalStorage('calendar_settings', { hourlyRate: 1200, transport: 1000 });
     const workSettings = workSettingsData || { hourlyRate: 1200, transport: 1000 };
 
     const [showSettings, setShowSettings] = useState(false);
@@ -167,14 +167,25 @@ const Finance = ({ user }) => {
         const currentMonthShifts = shifts.filter(s => s.date >= start && s.date <= end);
 
         const total = currentMonthShifts.reduce((sum, s) => {
-            const startTime = parse(s.start, 'HH:mm', new Date());
-            const endTime = parse(s.end, 'HH:mm', new Date());
-            if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) return sum;
-            let minutes = differenceInMinutes(endTime, startTime);
-            if (minutes < 0) minutes += 24 * 60;
-            const workMinutes = Math.max(0, minutes - (s.break || 0));
-            const hours = workMinutes / 60;
-            return sum + Math.floor(hours * workSettings.hourlyRate) + workSettings.transport;
+            if (!s.start || !s.end) return sum;
+            try {
+                // Supabase TIME might be HH:mm:ss, date-fns parse needs exact match or prefix
+                const startStr = s.start.substring(0, 5);
+                const endStr = s.end.substring(0, 5);
+                const startTime = parse(startStr, 'HH:mm', new Date());
+                const endTime = parse(endStr, 'HH:mm', new Date());
+
+                if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) return sum;
+
+                let minutes = differenceInMinutes(endTime, startTime);
+                if (minutes < 0) minutes += 24 * 60;
+                const workMinutes = Math.max(0, minutes - (s.break || 0));
+                const hours = workMinutes / 60;
+                return sum + Math.floor(hours * workSettings.hourlyRate) + workSettings.transport;
+            } catch (e) {
+                console.error("[Finance] Salary calc error for shift:", s, e);
+                return sum;
+            }
         }, 0);
 
         return total;

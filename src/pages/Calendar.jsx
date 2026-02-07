@@ -119,8 +119,10 @@ const Calendar = ({ user }) => {
     const calculateDailySalary = (shift) => {
         if (!shift || !shift.start || !shift.end) return 0;
         try {
-            const start = parse(shift.start, 'HH:mm', new Date());
-            const end = parse(shift.end, 'HH:mm', new Date());
+            const startStr = shift.start.substring(0, 5);
+            const endStr = shift.end.substring(0, 5);
+            const start = parse(startStr, 'HH:mm', new Date());
+            const end = parse(endStr, 'HH:mm', new Date());
             if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
             let minutes = differenceInMinutes(end, start);
             if (minutes < 0) minutes += 24 * 60;
