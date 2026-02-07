@@ -64,6 +64,23 @@ const Calendar = ({ user }) => {
 
     // Initialize category_id once categories are loaded
     useEffect(() => {
+        if (!loadingCategories && categoriesData.length === 0 && user?.id) {
+            const seedDefaults = async () => {
+                const defaults = [
+                    { name: '仕事', color: 'bg-green-500' },
+                    { name: 'プライベート', color: 'bg-blue-500' },
+                    { name: '大学', color: 'bg-purple-500' },
+                    { name: '重要', color: 'bg-red-500' }
+                ];
+                for (const cat of defaults) {
+                    await addCategory(cat);
+                }
+            };
+            seedDefaults();
+        }
+    }, [loadingCategories, categoriesData, user?.id]);
+
+    useEffect(() => {
         if (categories.length > 0 && !eventForm.category_id) {
             setEventForm(prev => ({ ...prev, category_id: categories[0].id }));
         }
