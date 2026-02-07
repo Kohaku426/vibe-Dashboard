@@ -98,6 +98,7 @@ const Health = ({ user }) => {
         data: workouts,
         loading: loadingWorkouts,
         addData: addWorkout,
+        addDataBulk: addWorkoutBulk,
         deleteData: removeWorkout
     } = useSupabase('health_workouts', user?.id);
 
@@ -340,19 +341,21 @@ const Health = ({ user }) => {
 
         try {
             if (workoutForm.type === 'strength') {
-                // Submit each set
-                for (let set of workoutForm.sets) {
-                    if (!set.weight || !set.reps) continue;
-                    await addWorkout({
+                const setsToSave = workoutForm.sets
+                    .filter(set => set.weight && set.reps)
+                    .map(set => ({
                         date: workoutForm.date,
                         type: 'strength',
                         exercise: exerciseName,
                         weight: parseFloat(set.weight),
                         reps: parseInt(set.reps),
-                        sets: 1 // Store as 1 set record
-                    });
+                        sets: 1
+                    }));
+
+                if (setsToSave.length > 0) {
+                    await addWorkoutBulk(setsToSave);
                 }
-                startTimer(60); // Auto start rest timer
+                startTimer(60);
             } else {
                 await addWorkout({
                     date: workoutForm.date,

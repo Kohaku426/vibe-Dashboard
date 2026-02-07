@@ -56,6 +56,23 @@ export const useSupabase = (tableName, userId) => {
         }
     };
 
+    const addDataBulk = async (newItems) => {
+        try {
+            const itemsWithAuth = newItems.map(item => ({ ...item, user_id: userId }));
+            const { data: insertedData, error } = await supabase
+                .from(tableName)
+                .insert(itemsWithAuth)
+                .select();
+
+            if (error) throw error;
+            setData(prev => [...(insertedData || []), ...prev]);
+            return insertedData;
+        } catch (err) {
+            setError(err.message);
+            throw err;
+        }
+    };
+
     const updateData = async (id, updates) => {
         try {
             const { error } = await supabase
@@ -88,5 +105,5 @@ export const useSupabase = (tableName, userId) => {
         }
     };
 
-    return { data, loading, error, addData, updateData, deleteData, refresh: fetchData };
+    return { data, loading, error, addData, addDataBulk, updateData, deleteData, refresh: fetchData };
 };
