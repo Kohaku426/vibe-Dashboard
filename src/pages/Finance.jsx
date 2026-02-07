@@ -102,6 +102,7 @@ const Finance = ({ user }) => {
         date: new Date().toISOString().split('T')[0],
         item: '',
         amount: '',
+        actualAmount: '',
         type: 'expense', // 'income' or 'expense'
         category: '食費',
         method: 'cash' // 'cash', 'smbc', 'jcb', 'olive'
@@ -109,7 +110,14 @@ const Finance = ({ user }) => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => {
+            const updates = { [name]: value };
+            // Auto-sync actualAmount with amount if it's an expense and empty or matching
+            if (name === 'amount' && (prev.actualAmount === '' || prev.actualAmount === prev.amount)) {
+                updates.actualAmount = value;
+            }
+            return { ...prev, ...updates };
+        });
     };
 
     const handleBalanceChange = (e) => {
@@ -119,19 +127,21 @@ const Finance = ({ user }) => {
 
     const addTransaction = async (e) => {
         e.preventDefault();
-        if (!formData.amount) return; // Only amount is strictly required now
+        if (!formData.amount) return;
 
         try {
             await addTxn({
                 date: formData.date,
                 item: formData.item.trim() || '未分類',
                 amount: parseFloat(formData.amount),
+                actual_amount: formData.actualAmount ? parseFloat(formData.actualAmount) : parseFloat(formData.amount),
                 type: formData.type,
                 category: formData.category,
                 method: formData.method
             });
-            setFormData(prev => ({ ...prev, item: '', amount: '' }));
+            setFormData(prev => ({ ...prev, item: '', amount: '', actualAmount: '' }));
         } catch (err) {
+            console.error('[Finance] addTransaction error:', err);
             alert('取引の追加に失敗しました');
         }
     };
@@ -215,7 +225,7 @@ const Finance = ({ user }) => {
         const nextPaymentAmount = cardTxns.reduce((sum, t) => {
             const tDate = new Date(t.date);
             if (tDate >= cycleStart && tDate <= cycleEnd) {
-                return sum + t.amount;
+                return sum + (t.actual_amount !== undefined && t.actual_amount !== null ? t.actual_amount : t.amount);
             }
             return sum;
         }, 0);
@@ -223,7 +233,7 @@ const Finance = ({ user }) => {
         const currentUsageAmount = cardTxns.reduce((sum, t) => {
             const tDate = new Date(t.date);
             if (tDate > cycleEnd) {
-                return sum + t.amount;
+                return sum + (t.actual_amount !== undefined && t.actual_amount !== null ? t.actual_amount : t.amount);
             }
             return sum;
         }, 0);
@@ -652,17 +662,32 @@ const Finance = ({ user }) => {
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs text-gray-500 uppercase">金額 (円)</label>
-                                <input
-                                    type="number"
-                                    name="amount"
-                                    value={formData.amount}
-                                    onChange={handleInputChange}
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                                    required
-                                    min="0"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs text-gray-500 uppercase">出費 (グラフ用)</label>
+                                    <input
+                                        type="number"
+                                        name="amount"
+                                        value={formData.amount}
+                                        onChange={handleInputChange}
+                                        placeholder="¥0"
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                                        required
+                                        min="0"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs text-gray-500 uppercase">実金額 (支払額)</label>
+                                    <input
+                                        type="number"
+                                        name="actualAmount"
+                                        value={formData.actualAmount}
+                                        onChange={handleInputChange}
+                                        placeholder="¥0"
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-bold"
+                                        min="0"
+                                    />
+                                </div>
                             </div>
 
                             <div className="space-y-2">
