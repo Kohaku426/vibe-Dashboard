@@ -119,12 +119,12 @@ const Finance = ({ user }) => {
 
     const addTransaction = async (e) => {
         e.preventDefault();
-        if (!formData.item || !formData.amount) return;
+        if (!formData.amount) return; // Only amount is strictly required now
 
         try {
             await addTxn({
                 date: formData.date,
-                item: formData.item,
+                item: formData.item.trim() || '未分類',
                 amount: parseFloat(formData.amount),
                 type: formData.type,
                 category: formData.category,
@@ -647,9 +647,8 @@ const Finance = ({ user }) => {
                                     name="item"
                                     value={formData.item}
                                     onChange={handleInputChange}
-                                    placeholder="例: ランチ, 給料"
+                                    placeholder="例: ランチ, 給料 (空欄で未分類)"
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                                    required
                                 />
                             </div>
 
