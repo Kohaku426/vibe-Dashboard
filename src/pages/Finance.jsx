@@ -88,7 +88,7 @@ const Finance = ({ user }) => {
         amount: '',
         type: 'expense', // 'income' or 'expense'
         category: 'Food',
-        method: 'cash' // 'cash', 'smbc', 'jcb'
+        method: 'cash' // 'cash', 'smbc', 'jcb', 'olive'
     });
 
     const handleInputChange = (e) => {
@@ -157,22 +157,34 @@ const Finance = ({ user }) => {
         const today = new Date();
         const currentDay = today.getDate();
 
-        // Determine "Next Payment" Target Cycle
-        // If today <= 10, next payment is This Month 10th (Source: Month-2 16th ~ Month-1 15th)
-        // If today > 10, next payment is Next Month 10th (Source: Month-1 16th ~ This Month 15th)
-
         let paymentDate;
         let cycleStart;
         let cycleEnd;
 
-        if (currentDay <= 10) {
-            paymentDate = setDate(today, 10);
-            cycleEnd = setDate(subMonths(today, 1), 15);
-            cycleStart = setDate(subMonths(today, 2), 16);
+        if (method === 'olive') {
+            // Olive: End of month close, 26th pay (EOM-26 logic)
+            // If today <= 26, next payment is This Month 26th (Source: Month-1 full month)
+            // If today > 26, next payment is Next Month 26th (Source: This Month full month)
+            if (currentDay <= 26) {
+                paymentDate = setDate(today, 26);
+                cycleStart = startOfMonth(subMonths(today, 1));
+                cycleEnd = endOfMonth(subMonths(today, 1));
+            } else {
+                paymentDate = setDate(addMonths(today, 1), 26);
+                cycleStart = startOfMonth(today);
+                cycleEnd = endOfMonth(today);
+            }
         } else {
-            paymentDate = setDate(addMonths(today, 1), 10);
-            cycleEnd = setDate(today, 15);
-            cycleStart = setDate(subMonths(today, 1), 16);
+            // SMBC/JCB: 15th close, 10th pay
+            if (currentDay <= 10) {
+                paymentDate = setDate(today, 10);
+                cycleEnd = setDate(subMonths(today, 1), 15);
+                cycleStart = setDate(subMonths(today, 2), 16);
+            } else {
+                paymentDate = setDate(addMonths(today, 1), 10);
+                cycleEnd = setDate(today, 15);
+                cycleStart = setDate(subMonths(today, 1), 16);
+            }
         }
 
         // Set times for accurate comparison
@@ -190,8 +202,6 @@ const Finance = ({ user }) => {
             return sum;
         }, 0);
 
-        // Current Usage: Accumulated since the start of the *next* cycle (after cycleEnd)
-        // i.e., > cycleEnd
         const currentUsageAmount = cardTxns.reduce((sum, t) => {
             const tDate = new Date(t.date);
             if (tDate > cycleEnd) {
@@ -205,6 +215,7 @@ const Finance = ({ user }) => {
 
     const smbcStats = useMemo(() => calculateCardUsage('smbc'), [transactions]);
     const jcbStats = useMemo(() => calculateCardUsage('jcb'), [transactions]);
+    const oliveStats = useMemo(() => calculateCardUsage('olive'), [transactions]);
 
     // 2. Totals
     const { totalIncome, totalExpense, balance, assets, liabilities, netWorth } = useMemo(() => {
@@ -220,7 +231,8 @@ const Finance = ({ user }) => {
         const totalAssets = (balances.cash || 0) + (balances.bank || 0);
         const totalLiabilities =
             (smbcStats.nextPaymentAmount + smbcStats.currentUsageAmount) +
-            (jcbStats.nextPaymentAmount + jcbStats.currentUsageAmount);
+            (jcbStats.nextPaymentAmount + jcbStats.currentUsageAmount) +
+            (oliveStats.nextPaymentAmount + oliveStats.currentUsageAmount);
 
         return {
             totalIncome: income,
@@ -444,6 +456,31 @@ const Finance = ({ user }) => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Olive Card */}
+                        <div className="glass-card p-5 relative overflow-hidden group border-olive-500/20 md:col-span-2">
+                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-olive-500/10 rounded-full blur-2xl group-hover:bg-olive-500/20 transition-all"></div>
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center gap-2">
+                                    <CreditCard className="text-yellow-400" size={20} />
+                                    <span className="font-bold text-white">Olive</span>
+                                </div>
+                                <span className="text-[10px] bg-yellow-900/40 text-yellow-300 px-2 py-0.5 rounded border border-yellow-500/30">末締 26払</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <p className="text-xs text-gray-400 flex justify-between">
+                                        <span>次回引落 ({format(oliveStats.nextPaymentDate, 'M/d')})</span>
+                                        {oliveStats.nextPaymentAmount > 0 && <span className="text-white font-bold">確定</span>}
+                                    </p>
+                                    <p className="text-xl font-bold text-white">¥{oliveStats.nextPaymentAmount.toLocaleString()}</p>
+                                </div>
+                                <div className="border-l border-white/5 pl-6">
+                                    <p className="text-xs text-gray-500">現在の未確定利用額</p>
+                                    <p className="text-sm font-medium text-gray-300">¥{oliveStats.currentUsageAmount.toLocaleString()}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Monthly Trends Bar Chart */}
@@ -571,7 +608,7 @@ const Finance = ({ user }) => {
                             <div className="space-y-2">
                                 <label className="text-xs text-gray-500 uppercase">支払い方法</label>
                                 <div className="grid grid-cols-3 gap-2">
-                                    {['cash', 'smbc', 'jcb'].map((method) => (
+                                    {['cash', 'smbc', 'jcb', 'olive'].map((method) => (
                                         <button
                                             key={method}
                                             type="button"
@@ -581,7 +618,7 @@ const Finance = ({ user }) => {
                                                 : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'
                                                 }`}
                                         >
-                                            {method === 'cash' ? '現金' : method === 'smbc' ? 'SMBC' : 'JCB'}
+                                            {method === 'cash' ? '現金' : method === 'smbc' ? 'SMBC' : method === 'jcb' ? 'JCB' : 'Olive'}
                                         </button>
                                     ))}
                                 </div>
@@ -629,7 +666,7 @@ const Finance = ({ user }) => {
                                                     <span>•</span>
                                                     <span className="px-2 py-0.5 rounded-full bg-white/5 text-gray-400">{t.category}</span>
                                                     {t.method && t.method !== 'cash' && (
-                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] border ${t.method === 'smbc' ? 'border-green-500/30 text-green-300' : 'border-blue-500/30 text-blue-300'
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] border ${t.method === 'smbc' ? 'border-green-500/30 text-green-300' : t.method === 'jcb' ? 'border-blue-500/30 text-blue-300' : 'border-yellow-500/30 text-yellow-300'
                                                             }`}>
                                                             {t.method.toUpperCase()}
                                                         </span>

@@ -182,9 +182,56 @@ const Dashboard = ({ user }) => {
             }
         });
 
+        const calculateCardUsage = (method) => {
+            const today = new Date();
+            const currentDay = today.getDate();
+
+            let paymentDate;
+            let cycleStart;
+            let cycleEnd;
+
+            if (method === 'olive') {
+                if (currentDay <= 26) {
+                    paymentDate = setDate(today, 26);
+                    cycleStart = startOfMonth(subMonths(today, 1));
+                    cycleEnd = endOfMonth(subMonths(today, 1));
+                } else {
+                    paymentDate = setDate(addMonths(today, 1), 26);
+                    cycleStart = startOfMonth(today);
+                    cycleEnd = endOfMonth(today);
+                }
+            } else {
+                if (currentDay <= 10) {
+                    paymentDate = setDate(today, 10);
+                    cycleEnd = setDate(subMonths(today, 1), 15);
+                    cycleStart = setDate(subMonths(today, 2), 16);
+                } else {
+                    paymentDate = setDate(addMonths(today, 1), 10);
+                    cycleEnd = setDate(today, 15);
+                    cycleStart = setDate(subMonths(today, 1), 16);
+                }
+            }
+            cycleStart.setHours(0, 0, 0, 0);
+            cycleEnd.setHours(23, 59, 59, 999);
+
+            const cardTxns = list.filter(t => t.method === method && t.type === 'expense');
+            const nextPaymentAmount = cardTxns.reduce((sum, t) => {
+                const tDate = new Date(t.date);
+                if (tDate >= cycleStart && tDate <= cycleEnd) return sum + Number(t.amount);
+                return sum;
+            }, 0);
+
+            return { amount: nextPaymentAmount, date: format(paymentDate, 'M/d') };
+        };
+
         return {
             balance: income - expense,
-            monthlyData: last6Months
+            monthlyData: last6Months,
+            cards: {
+                smbc: calculateCardUsage('smbc'),
+                jcb: calculateCardUsage('jcb'),
+                olive: calculateCardUsage('olive')
+            }
         };
     }, [finance]);
 
@@ -213,8 +260,25 @@ const Dashboard = ({ user }) => {
         const cals = (meals || []).filter(m => m.date === dateStr).reduce((sum, m) => sum + m.calories, 0);
         const isMotivated = diff && Number(diff) < 0;
 
-        return { currentWeight, diff, cals, isMotivated };
-    }, [weights, meals, dateStr]);
+        // Big 3 PRs
+        const getPR = (exercise) => {
+            const exerciseWorkouts = (workouts || []).filter(w => w.exercise === exercise && w.type === 'strength');
+            if (exerciseWorkouts.length === 0) return '--';
+            return Math.max(...exerciseWorkouts.map(w => Number(w.weight)));
+        };
+
+        return {
+            currentWeight,
+            diff,
+            cals,
+            isMotivated,
+            prs: {
+                bench: getPR('ベンチプレス'),
+                squat: getPR('スクワット'),
+                deadlift: getPR('デッドリフト')
+            }
+        };
+    }, [weights, meals, workouts, dateStr]);
 
     const activeWorkouts = useMemo(() => {
         const start = format(startOfWeek(today), 'yyyy-MM-dd');
@@ -256,6 +320,13 @@ const Dashboard = ({ user }) => {
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
             .slice(0, 3);
     }, [jobsData]);
+
+    const nextCareerEvent = useMemo(() => {
+        const upcoming = jobsData
+            .filter(j => j.date && isAfter(parseISO(j.date), today))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+        return upcoming[0] || null;
+    }, [jobsData, today]);
 
     // Handle Gemini Launch
     const handleGeminiSearch = (e, promptOverride) => {
@@ -333,11 +404,24 @@ const Dashboard = ({ user }) => {
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 <Wallet size={20} className="text-green-400" /> Finance
                             </h3>
-                            <div className="mt-2">
-                                <p className="text-xs text-gray-400 uppercase">現在の残高</p>
-                                <p className={`text-3xl font-bold ${financeStats.balance >= 0 ? 'text-white' : 'text-red-400'}`}>
-                                    ¥{financeStats.balance.toLocaleString()}
-                                </p>
+                            <div className="mt-2 flex items-baseline gap-4">
+                                <div>
+                                    <p className="text-xs text-gray-400 uppercase">残高</p>
+                                    <p className={`text-2xl font-bold ${financeStats.balance >= 0 ? 'text-white' : 'text-red-400'}`}>
+                                        ¥{financeStats.balance.toLocaleString()}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tighter">Next Payments</p>
+                                    <div className="flex gap-2 text-[10px]">
+                                        <div className="bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                                            <span className="text-gray-500">SM/JC:</span> <span className="text-white font-mono">¥{financeStats.cards.smbc.amount.toLocaleString()}</span>
+                                        </div>
+                                        <div className="bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                                            <span className="text-gray-500">Olive:</span> <span className="text-white font-mono">¥{financeStats.cards.olive.amount.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -410,19 +494,32 @@ const Dashboard = ({ user }) => {
                             <CheckSquare size={20} className="text-purple-400" /> 優先タスク
                         </h3>
                         {activeTodos.length > 0 ? (
-                            activeTodos.map(todo => (
-                                <div key={todo.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${todo.tag === 'University' ? 'bg-blue-400' : todo.tag === 'Job Hunting' ? 'bg-purple-400' : 'bg-green-400'}`} />
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm text-gray-200 truncate">{todo.text}</p>
-                                        {todo.dueDate && (
-                                            <p className="text-[10px] text-gray-500 flex items-center gap-1">
-                                                <Clock size={10} /> {format(parseISO(todo.dueDate), todo.dueDate.includes('T') ? 'M/d HH:mm' : 'M/d')}
-                                            </p>
-                                        )}
+                            activeTodos.map(todo => {
+                                const daysLeft = todo.dueDate ? differenceInDays(parseISO(todo.dueDate), today) : null;
+                                return (
+                                    <div key={todo.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${todo.tag === 'University' ? 'bg-blue-400' : todo.tag === 'Job Hunting' ? 'bg-purple-400' : 'bg-green-400'}`} />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm text-gray-200 truncate">{todo.text}</p>
+                                            <div className="flex items-center justify-between">
+                                                {todo.dueDate && (
+                                                    <p className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                        <Clock size={10} /> {format(parseISO(todo.dueDate), todo.dueDate.includes('T') ? 'M/d HH:mm' : 'M/d')}
+                                                    </p>
+                                                )}
+                                                {daysLeft !== null && (
+                                                    <span className={clsx(
+                                                        "text-[9px] font-bold px-1 rounded",
+                                                        daysLeft <= 1 ? "text-red-400 bg-red-400/10" : "text-gray-500 bg-white/5"
+                                                    )}>
+                                                        あと{daysLeft}日
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                );
+                            })
                         ) : (
                             <p className="text-sm text-gray-500">タスクはありません</p>
                         )}
@@ -445,27 +542,36 @@ const Dashboard = ({ user }) => {
                             <Activity size={20} className="text-pink-400" /> Health
                         </h3>
                         <div className="space-y-3">
-                            <div>
-                                <p className="text-xs text-gray-500">体重</p>
-                                <div className="flex items-baseline gap-2">
+                            <div className="flex justify-between items-end">
+                                <div>
+                                    <p className="text-xs text-gray-500">Weight</p>
                                     <p className={clsx("text-2xl font-bold transition-colors", healthStats.isMotivated ? "text-green-300" : "text-white")}>
                                         {healthStats.currentWeight !== null ? healthStats.currentWeight : '--'}
                                         <span className="text-sm text-gray-500 font-normal ml-1">kg</span>
                                     </p>
-                                    {healthStats.diff !== null && (
-                                        <span className={`text-xs font-bold ${Number(healthStats.diff) > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                            {Number(healthStats.diff) > 0 ? '+' : ''}{healthStats.diff}
-                                        </span>
-                                    )}
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Today's Calories</p>
+                                    <p className="text-lg font-bold text-white">{healthStats.cals}<span className="text-xs text-gray-500 font-normal ml-1">kcal</span></p>
                                 </div>
                             </div>
-                            <div>
-                                <p className="text-xs text-gray-500">今日の摂取カロリー</p>
-                                <p className="text-xl font-bold text-white">{healthStats.cals}<span className="text-sm text-gray-500 font-normal ml-1">kcal</span></p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500">今週の運動</p>
-                                <p className="text-base font-bold text-white">{activeWorkouts} <span className="text-xs text-gray-500 font-normal">回</span></p>
+
+                            <div className="pt-2 border-t border-white/10">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Big 3 PRs (kg)</p>
+                                <div className="grid grid-cols-3 gap-2 text-center">
+                                    <div className="bg-white/5 rounded p-1.5">
+                                        <p className="text-[8px] text-gray-500">BP</p>
+                                        <p className="text-sm font-bold text-blue-400">{healthStats.prs.bench}</p>
+                                    </div>
+                                    <div className="bg-white/5 rounded p-1.5">
+                                        <p className="text-[8px] text-gray-500">SQ</p>
+                                        <p className="text-sm font-bold text-purple-400">{healthStats.prs.squat}</p>
+                                    </div>
+                                    <div className="bg-white/5 rounded p-1.5">
+                                        <p className="text-[8px] text-gray-500">DL</p>
+                                        <p className="text-sm font-bold text-pink-400">{healthStats.prs.deadlift}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -483,24 +589,31 @@ const Dashboard = ({ user }) => {
                     </h3>
 
                     <div className="flex-1 space-y-2 mb-2">
-                        {recentJobs.length > 0 ? (
-                            recentJobs.map(job => (
-                                <div key={job.id} className="flex items-center gap-2 p-2 rounded-lg bg-black/20 border border-white/5">
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${job.color} whitespace-nowrap`}>
-                                        {job.statusLabel}
-                                    </span>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-xs font-medium text-white truncate">{job.company}</p>
-                                        {job.date && <p className="text-[10px] text-gray-400">{format(parseISO(job.date), 'M/d')}</p>}
-                                    </div>
-                                </div>
-                            ))
+                        {nextCareerEvent ? (
+                            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 animate-pulse-slow">
+                                <p className="text-[10px] text-blue-300 font-bold uppercase mb-1">Upcoming Event</p>
+                                <p className="text-sm font-bold text-white truncate">{nextCareerEvent.company}</p>
+                                <p className="text-xs text-blue-400 flex items-center gap-1 mt-1">
+                                    <CalendarIcon size={12} /> {format(parseISO(nextCareerEvent.date), 'M月d日')}
+                                </p>
+                            </div>
                         ) : (
-                            <div className="flex flex-col justify-center h-20">
+                            <div className="flex flex-col justify-center h-24">
                                 <p className="text-5xl font-bold text-white translate-y-2">{activeApplications}</p>
                                 <p className="text-xs text-gray-400 mt-2">エントリー中の企業数</p>
                             </div>
                         )}
+
+                        <div className="space-y-1">
+                            {recentJobs.slice(0, 2).map(job => (
+                                <div key={job.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-black/20 border border-white/5 text-[10px]">
+                                    <span className={`px-1 rounded border ${job.color} whitespace-nowrap scale-90`}>
+                                        {job.statusLabel}
+                                    </span>
+                                    <span className="text-white truncate flex-1">{job.company}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <Link to="/career" className="absolute bottom-4 right-4 text-xs text-gray-500 hover:text-white flex items-center gap-1 transition-colors">
