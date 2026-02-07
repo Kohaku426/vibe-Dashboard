@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-    Plus, Trash2, Activity, Scale, Utensils, Flame, ChevronRight, Home, ChevronDown, ChevronUp, Search, X
+    Plus, Trash2, Activity, Scale, Utensils, Flame, ChevronRight, Home, ChevronDown, ChevronUp, Search, X, Settings
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
