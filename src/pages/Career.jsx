@@ -34,7 +34,7 @@ const Career = ({ user }) => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
-    const [editForm, setEditForm] = useState(null);
+    const [editForm, setEditForm] = useState({});
     const [newJob, setNewJob] = useState({ company: '', date: '', memo: '', url: '', login_id: '' });
 
     const handleSelectJob = (job) => {
@@ -172,16 +172,16 @@ const Career = ({ user }) => {
                         </div>
 
                         <div className="mb-8">
-                            {isEditing ? (
+                            {isEditing && editForm ? (
                                 <div className="flex flex-col gap-2 w-full">
                                     <input
                                         type="text"
-                                        value={editForm.company}
+                                        value={editForm.company || ''}
                                         onChange={e => setEditForm({ ...editForm, company: e.target.value })}
                                         className="text-3xl font-bold bg-transparent text-white border-b border-white/10 w-full focus:outline-none focus:border-blue-500 pb-1"
                                     />
                                     <select
-                                        value={editForm.status}
+                                        value={editForm.status || 'entry'}
                                         onChange={e => setEditForm({ ...editForm, status: e.target.value })}
                                         className="mt-2 bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-fit"
                                     >
@@ -192,10 +192,16 @@ const Career = ({ user }) => {
                                 </div>
                             ) : (
                                 <>
-                                    <h2 className="text-3xl font-bold text-white mb-2">{selectedJob.company}</h2>
-                                    <span className={clsx("px-3 py-1 rounded-full text-xs font-bold border block w-fit mt-2", COLUMNS[selectedJob.status].color.replace('border-', 'text-').replace('border-', 'border-'))}>
-                                        {COLUMNS[selectedJob.status].title}
-                                    </span>
+                                    <h2 className="text-3xl font-bold text-white mb-2">{selectedJob?.company}</h2>
+                                    {selectedJob && COLUMNS[selectedJob.status] && (
+                                        <span className={clsx(
+                                            "px-3 py-1 rounded-full text-xs font-bold border block w-fit mt-2",
+                                            COLUMNS[selectedJob.status].color,
+                                            COLUMNS[selectedJob.status].color.replace('border-', 'text-')
+                                        )}>
+                                            {COLUMNS[selectedJob.status].title}
+                                        </span>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -229,7 +235,6 @@ const Career = ({ user }) => {
                                     )}
                                 </section>
                             </div>
-
                             <section className="p-4 bg-white/5 rounded-2xl border border-white/5">
                                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2 flex items-center gap-1"><ExternalLink size={12} /> 採用ページ</p>
                                 {isEditing ? (
@@ -286,34 +291,37 @@ const Career = ({ user }) => {
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Add Modal */}
-            {isAddModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-                    <div className="glass-card w-full max-w-md p-6 relative">
-                        <button onClick={() => setIsAddModalOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white"><X size={20} /></button>
-                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Building2 className="text-blue-400" /> エントリー登録</h2>
-                        <form onSubmit={handleAddJob} className="space-y-4">
-                            <input type="text" placeholder="会社名" value={newJob.company} onChange={e => setNewJob({ ...newJob, company: e.target.value })} className="w-full input-dark px-4 py-2.5" autoFocus required />
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-gray-500 uppercase">日付</label>
-                                    <input type="date" value={newJob.date} onChange={e => setNewJob({ ...newJob, date: e.target.value })} className="w-full input-dark px-3 py-2 text-sm" />
+            {
+                isAddModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+                        <div className="glass-card w-full max-w-md p-6 relative">
+                            <button onClick={() => setIsAddModalOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white"><X size={20} /></button>
+                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Building2 className="text-blue-400" /> エントリー登録</h2>
+                            <form onSubmit={handleAddJob} className="space-y-4">
+                                <input type="text" placeholder="会社名" value={newJob.company} onChange={e => setNewJob({ ...newJob, company: e.target.value })} className="w-full input-dark px-4 py-2.5" autoFocus required />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-gray-500 uppercase">日付</label>
+                                        <input type="date" value={newJob.date} onChange={e => setNewJob({ ...newJob, date: e.target.value })} className="w-full input-dark px-3 py-2 text-sm" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-gray-500 uppercase">ログインID</label>
+                                        <input type="text" value={newJob.login_id} onChange={e => setNewJob({ ...newJob, login_id: e.target.value })} className="w-full input-dark px-3 py-2 text-sm" />
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-gray-500 uppercase">ログインID</label>
-                                    <input type="text" value={newJob.login_id} onChange={e => setNewJob({ ...newJob, login_id: e.target.value })} className="w-full input-dark px-3 py-2 text-sm" />
-                                </div>
-                            </div>
-                            <input type="url" placeholder="採用ページURL (https://...)" value={newJob.url} onChange={e => setNewJob({ ...newJob, url: e.target.value })} className="w-full input-dark px-4 py-2.5 text-sm" />
-                            <textarea placeholder="選考ステップの詳細、筆記試験の内容など..." value={newJob.memo} onChange={e => setNewJob({ ...newJob, memo: e.target.value })} className="w-full input-dark px-4 py-2 text-sm h-32 resize-none" />
-                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all">追加する</button>
-                        </form>
+                                <input type="url" placeholder="採用ページURL (https://...)" value={newJob.url} onChange={e => setNewJob({ ...newJob, url: e.target.value })} className="w-full input-dark px-4 py-2.5 text-sm" />
+                                <textarea placeholder="選考ステップの詳細、筆記試験の内容など..." value={newJob.memo} onChange={e => setNewJob({ ...newJob, memo: e.target.value })} className="w-full input-dark px-4 py-2 text-sm h-32 resize-none" />
+                                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all">追加する</button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

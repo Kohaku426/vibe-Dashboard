@@ -33,16 +33,8 @@ const Calendar = ({ user }) => {
         deleteData: removeShift
     } = useSupabase('work_shifts', user?.id);
 
-    // Default categories if none exist
-    const categories = useMemo(() => {
-        if (categoriesData.length > 0) return categoriesData;
-        return [
-            { id: '1', name: '仕事', color: 'bg-green-500' },
-            { id: '2', name: 'プライベート', color: 'bg-blue-500' },
-            { id: '3', name: '大学', color: 'bg-purple-500' },
-            { id: '4', name: '重要', color: 'bg-red-500' }
-        ];
-    }, [categoriesData]);
+    // Default categories if none exist (Empty while loading/seeding)
+    const categories = categoriesData;
 
     const [settings, setSettings] = useLocalStorage('work_settings', { hourlyRate: 1200, transport: 1000 });
 
@@ -80,11 +72,12 @@ const Calendar = ({ user }) => {
         }
     }, [loadingCategories, categoriesData, user?.id]);
 
+    // Initialize category_id once categories are loaded
     useEffect(() => {
         if (categories.length > 0 && !eventForm.category_id) {
             setEventForm(prev => ({ ...prev, category_id: categories[0].id }));
         }
-    }, [categories]);
+    }, [categories, eventForm.category_id]);
 
     // --- Logic ---
     const handleSaveShift = async (e) => {
@@ -148,10 +141,12 @@ const Calendar = ({ user }) => {
     }, [eventsData, selectedDateStr]);
 
     const getCategoryColor = (catId) => {
+        if (!catId) return 'bg-gray-500';
         return categories.find(c => c.id === catId)?.color || 'bg-gray-500';
     };
 
     const getCategoryName = (catId) => {
+        if (!catId) return '未分類';
         return categories.find(c => c.id === catId)?.name || '未分類';
     };
 
