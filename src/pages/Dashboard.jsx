@@ -11,7 +11,7 @@ import {
     PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO, differenceInHours, differenceInDays } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO, differenceInHours, differenceInDays, setDate, subMonths, addMonths, isAfter } from 'date-fns';
 import clsx from 'clsx';
 
 import { supabase } from '../lib/supabaseClient';
