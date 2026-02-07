@@ -276,22 +276,22 @@ const Calendar = ({ user }) => {
                                     )}
                                 >
                                     <span className={clsx(
-                                        "text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full self-end",
-                                        isToday(day) ? "bg-blue-500 text-white" : "text-gray-400"
+                                        "text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full self-end",
+                                        isToday(day) ? "bg-blue-500 text-white shadow-lg shadow-blue-500/50" : "text-gray-400"
                                     )}>{format(day, 'd')}</span>
 
                                     <div className="flex-1 overflow-hidden space-y-0.5">
                                         {dayShift && (
-                                            <div className="text-[8px] px-1 rounded truncate text-white border-l-2 border-green-500 bg-green-500/20 font-bold">
+                                            <div className="text-[10px] px-1.5 rounded truncate text-white border-l-4 border-green-500 bg-green-500/20 font-bold">
                                                 {dayShift.start}-{dayShift.end}
                                             </div>
                                         )}
                                         {dayEvents.slice(0, 2).map(e => (
-                                            <div key={e.id} className={clsx("text-[8px] px-1 rounded truncate text-white border-l-2", getCategoryColor(e.category_id), "bg-white/10")}>
+                                            <div key={e.id} className={clsx("text-[10px] px-1.5 py-0.5 rounded truncate text-white border-l-4", getCategoryColor(e.category_id), "bg-white/5 shadow-sm")}>
                                                 {e.title}
                                             </div>
                                         ))}
-                                        {(dayEvents.length + (dayShift ? 1 : 0)) > 3 && <div className="text-[7px] text-gray-500 text-center">+{dayEvents.length + (dayShift ? 1 : 0) - 3} items</div>}
+                                        {(dayEvents.length + (dayShift ? 1 : 0)) > 3 && <div className="text-[9px] text-gray-500 font-medium text-center">+{dayEvents.length + (dayShift ? 1 : 0) - 2} items</div>}
                                     </div>
                                 </div>
                             );

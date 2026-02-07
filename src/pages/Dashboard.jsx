@@ -236,13 +236,13 @@ const Dashboard = ({ user }) => {
                             return (
                                 <Link key={i} to="/calendar" className={clsx("relative p-1 rounded-md transition-all border border-transparent flex flex-col gap-0.5 min-h-[45px] overflow-hidden", !isCurMonth && "opacity-20 grayscale", isToday(day) ? "bg-blue-500/10 border-blue-500/20" : "hover:bg-white/5")}>
                                     <span className={clsx("text-[9px] font-bold self-end", isToday(day) ? "text-blue-400" : "text-gray-500")}>{format(day, 'd')}</span>
-                                    <div className="flex-1 flex flex-wrap gap-0.5 mt-auto">
+                                    <div className="flex-1 flex flex-col gap-0.5 mt-auto w-full overflow-hidden">
                                         {dayShift && (
-                                            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]" title="Shift" />
+                                            <div className="w-full h-1 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]" title="Shift" />
                                         )}
                                         {dayEvents.slice(0, 3).map(e => {
                                             const cat = calendarCategories.find(c => c.id === e.category_id);
-                                            return <div key={e.id} className={clsx("w-1.5 h-1.5 rounded-full", cat?.color || "bg-gray-500")} title={e.title} />;
+                                            return <div key={e.id} className={clsx("w-full h-1 rounded-full", cat?.color || "bg-gray-500")} title={e.title} />;
                                         })}
                                     </div>
                                 </Link>
