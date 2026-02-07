@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Plus, Building2, Calendar, FileText, Trash2, Home, ExternalLink, User, X, Edit2 } from 'lucide-react';
+import { Plus, Building2, Calendar, FileText, Trash2, Home, ExternalLink, User, X, Edit2, Save, ArrowRight } from 'lucide-react';
 import clsx from 'clsx';
 import { useSupabase } from '../hooks/useSupabase';
 
