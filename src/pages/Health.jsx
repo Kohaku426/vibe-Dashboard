@@ -811,53 +811,62 @@ const Health = ({ user }) => {
                                     <button onClick={() => { setIsTimerRunning(false); setTimer(0); }} className="px-4 py-1.5 text-[10px] font-bold bg-red-900/10 rounded-lg border border-red-500/20 text-red-500 hover:bg-red-900/20 transition-all">STOP</button>
                                 </div>
                             )}
-                        </div>
-                    </div>
-                    {/* Recent Items Preview */}
-                    <div className="mt-6 pt-6 border-t border-white/5 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                        <h4 className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2 px-1">最近のログ</h4>
-                        {workouts && workouts.slice(0, 5).map(w => (
-                            <div key={w.id} className="p-3 rounded-xl bg-white/5 flex justify-between items-center group hover:bg-white/10 transition-all border border-transparent hover:border-white/10">
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-white">{w.exercise}</span>
-                                    <span className="text-[10px] text-gray-500">{w.date} • {w.type === 'strength' ? `${w.weight}kg × ${w.reps}` : `${w.time}min`}</span>
-                                </div>
-                                <button onClick={() => deleteWorkout(w.id)} className="text-gray-700 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
+
+                            {/* Recent Items Preview */}
+                            <div className="mt-6 pt-6 border-t border-white/5 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                                <h4 className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2 px-1 font-mono">Recent Logs</h4>
+                                {workouts && workouts.slice(0, 5).map(w => (
+                                    <div key={w.id} className="p-3 rounded-xl bg-white/5 flex justify-between items-center group hover:bg-white/10 transition-all border border-transparent hover:border-white/10">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-white">{w.exercise}</span>
+                                            <span className="text-[10px] text-gray-500 font-mono">{w.date} • {w.type === 'strength' ? `${w.weight}kg × ${w.reps}` : `${w.time}min`}</span>
+                                        </div>
+                                        <button onClick={() => deleteWorkout(w.id)} className="text-gray-700 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-            {/* Config Button */ }
-    <button onClick={() => setShowSettings(true)} className="fixed bottom-6 right-6 p-3 bg-white/10 rounded-full hover:bg-white/20 text-white"><ChevronRight /></button>
-
-    {/* Settings Modal */ }
-    {
-        showSettings && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div className="glass-card w-full max-w-md p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-white">目標設定</h2>
-                        <button onClick={() => setShowSettings(false)} className="text-gray-400"><X size={20} /></button>
-                    </div>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            {[{ id: 'goalWeight', label: '目標体重' }, { id: 'goalCalories', label: '目標カロリー' }, { id: 'goalProtein', label: '目標タンパク質' }, { id: 'goalFat', label: '目標脂質' }, { id: 'goalCarbs', label: '目標炭水化物' }].map(f => (
-                                <div key={f.id}>
-                                    <label className="text-[10px] text-gray-500 uppercase">{f.label}</label>
-                                    <input type="number" value={settings[f.id] || ''} onChange={e => setSettingsState({ ...settings, [f.id]: e.target.value })} className="input-dark w-full" />
-                                </div>
-                            ))}
                         </div>
-                        <button onClick={() => setShowSettings(false)} className="btn-primary w-full">保存する</button>
                     </div>
                 </div>
             </div>
-        )
-    }
-        </div >
+
+            {/* Config Button */}
+            <button onClick={() => setShowSettings(true)} className="fixed bottom-6 right-6 p-3 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all shadow-xl backdrop-blur-md border border-white/10">
+                <Settings size={20} />
+            </button>
+
+            {/* Settings Modal */}
+            {showSettings && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="glass-card w-full max-w-md p-6 relative">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings size={20} /> 目標設定</h2>
+                            <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-white transition-colors"><X size={20} /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                {[{ id: 'goalWeight', label: '目標体重 (kg)' }, { id: 'goalCalories', label: '目標カロリー (kcal)' }, { id: 'goalProtein', label: '目標タンパク質 (g)' }, { id: 'goalFat', label: '目標脂質 (g)' }, { id: 'goalCarbs', label: '目標炭水化物 (g)' }].map(f => (
+                                    <div key={f.id} className="space-y-1">
+                                        <label className="text-[10px] text-gray-500 uppercase font-bold px-1">{f.label}</label>
+                                        <input
+                                            type="number"
+                                            value={settings[f.id] || ''}
+                                            onChange={e => setSettingsState({ ...settings, [f.id]: e.target.value })}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-mono"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="pt-4">
+                                <button onClick={() => { updateSettings(settings); setShowSettings(false); }} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98]">
+                                    保存する
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
