@@ -157,9 +157,31 @@ const Health = ({ user }) => {
         date: new Date().toISOString().split('T')[0],
         type: 'strength',
         exercise: '',
-        weight: '', sets: '', reps: '',
+        sets: [{ weight: '', reps: '', memo: '' }],
         time: '', speed: '', incline: ''
     });
+
+    const addSetToForm = () => {
+        setWorkoutForm(prev => ({
+            ...prev,
+            sets: [...prev.sets, { weight: '', reps: '', memo: '' }]
+        }));
+    };
+
+    const updateSetInForm = (idx, field, value) => {
+        const newSets = [...workoutForm.sets];
+        newSets[idx] = { ...newSets[idx], [field]: value };
+        setWorkoutForm({ ...workoutForm, sets: newSets });
+    };
+
+    const removeSetFromForm = (idx) => {
+        if (workoutForm.sets.length <= 1) return;
+        setWorkoutForm({
+            ...workoutForm,
+            sets: workoutForm.sets.filter((_, i) => i !== idx)
+        });
+    };
+
     const [isCustomExercise, setIsCustomExercise] = useState(false);
     const [newExerciseName, setNewExerciseName] = useState('');
 
@@ -198,6 +220,26 @@ const Health = ({ user }) => {
         }), { calories: 0, protein: 0, fat: 0, carbs: 0 });
     }, [todayMeals]);
 
+    const [lastRecord, setLastRecord] = useState(null);
+    const [timer, setTimer] = useState(0);
+    const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+    useEffect(() => {
+        let interval;
+        if (isTimerRunning && timer > 0) {
+            interval = setInterval(() => setTimer(t => t - 1), 1000);
+        } else if (timer === 0) {
+            setIsTimerRunning(false);
+            if (interval) clearInterval(interval);
+        }
+        return () => clearInterval(interval);
+    }, [isTimerRunning, timer]);
+
+    const startTimer = (seconds) => {
+        setTimer(seconds);
+        setIsTimerRunning(true);
+    };
+
     const foodHistory = useMemo(() => {
         const uniqueMeals = [];
         const seen = new Set();
@@ -218,6 +260,34 @@ const Health = ({ user }) => {
         const uniqueWorkouts = workouts ? new Set(workouts.map(w => w.exercise)) : new Set();
         return Array.from(new Set([...DEFAULT_EXERCISES, ...uniqueWorkouts]));
     }, [workouts]);
+
+    // Fetch Last Record
+    useEffect(() => {
+        const fetchLastRecord = async () => {
+            if (!workoutForm.exercise || !user?.id) return;
+            const { data, error } = await supabase
+                .from('health_workouts')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('exercise', workoutForm.exercise)
+                .order('date', { ascending: false })
+                .order('created_at', { ascending: false })
+                .limit(5); // Get multiple sets of same last session
+
+            if (data && data.length > 0) {
+                // Focus on the most recent date
+                const lastDate = data[0].date;
+                const lastSessionSets = data.filter(d => d.date === lastDate);
+                setLastRecord({
+                    date: lastDate,
+                    sets: lastSessionSets
+                });
+            } else {
+                setLastRecord(null);
+            }
+        };
+        fetchLastRecord();
+    }, [workoutForm.exercise, user?.id]);
 
     // --- Handlers ---
     const handleWeightSubmit = async (e) => {
@@ -269,18 +339,32 @@ const Health = ({ user }) => {
         if (!exerciseName) return;
 
         try {
-            await addWorkout({
-                date: workoutForm.date,
-                type: workoutForm.type,
-                exercise: exerciseName,
-                weight: parseFloat(workoutForm.weight) || null,
-                sets: parseInt(workoutForm.sets) || null,
-                reps: parseInt(workoutForm.reps) || null,
-                time: parseFloat(workoutForm.time) || null,
-                speed: parseFloat(workoutForm.speed) || null,
-                incline: parseFloat(workoutForm.incline) || null
-            });
-            setWorkoutForm({ ...workoutForm, exercise: '', weight: '', sets: '', reps: '', time: '', speed: '', incline: '' });
+            if (workoutForm.type === 'strength') {
+                // Submit each set
+                for (let set of workoutForm.sets) {
+                    if (!set.weight || !set.reps) continue;
+                    await addWorkout({
+                        date: workoutForm.date,
+                        type: 'strength',
+                        exercise: exerciseName,
+                        weight: parseFloat(set.weight),
+                        reps: parseInt(set.reps),
+                        sets: 1, // Store as 1 set record
+                        memo: set.memo || null
+                    });
+                }
+                startTimer(60); // Auto start rest timer
+            } else {
+                await addWorkout({
+                    date: workoutForm.date,
+                    type: 'cardio',
+                    exercise: exerciseName,
+                    time: parseFloat(workoutForm.time) || null,
+                    speed: parseFloat(workoutForm.speed) || null,
+                    incline: parseFloat(workoutForm.incline) || null
+                });
+            }
+            setWorkoutForm({ ...workoutForm, exercise: '', sets: [{ weight: '', reps: '', memo: '' }], time: '', speed: '', incline: '' });
         } catch (err) {
             alert('トレーニングの記録に失敗しました');
         }
@@ -403,6 +487,88 @@ const Health = ({ user }) => {
                             {todayMeals.length === 0 && <p className="text-center text-gray-500 py-4">今日の食事はまだ記録されていません。</p>}
                         </div>
                     </div>
+                    {/* Meals Section End */}
+
+                    {/* Workouts Section */}
+                    <div className="glass-card p-6">
+                        <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
+                            <Flame className="text-red-400" size={20} /> 今日のトレーニング
+                        </h2>
+
+                        <div className="space-y-6">
+                            {(() => {
+                                const todayWorkouts = workouts.filter(w => w.date === todayStr);
+                                if (todayWorkouts.length === 0) return <p className="text-center text-gray-500 py-4">今日のトレーニングはまだありません。</p>;
+
+                                // Group by exercise
+                                const grouped = todayWorkouts.reduce((acc, w) => {
+                                    if (!acc[w.exercise]) acc[w.exercise] = [];
+                                    acc[w.exercise].push(w);
+                                    return acc;
+                                }, {});
+
+                                return Object.entries(grouped).map(([exercise, sets]) => (
+                                    <div key={exercise} className="bg-white/5 rounded-2xl border border-white/5 overflow-hidden">
+                                        <div className="bg-white/5 px-4 py-3 flex justify-between items-center border-b border-white/5">
+                                            <h3 className="font-bold text-white flex items-center gap-2">
+                                                <div className="w-1.5 h-6 bg-red-500 rounded-full"></div>
+                                                {exercise}
+                                            </h3>
+                                            <span className="text-[10px] text-gray-500 uppercase">{sets[0].type === 'strength' ? '筋トレ' : '有酸素'}</span>
+                                        </div>
+                                        <div className="p-4">
+                                            {sets[0].type === 'strength' ? (
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-sm">
+                                                        <thead>
+                                                            <tr className="text-[10px] text-gray-500 uppercase text-left">
+                                                                <th className="pb-2 font-black">Set</th>
+                                                                <th className="pb-2 font-black">Weight</th>
+                                                                <th className="pb-2 font-black">Reps</th>
+                                                                <th className="pb-2"></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="font-mono">
+                                                            {sets.map((s, idx) => (
+                                                                <tr key={s.id} className="border-t border-white/5 group">
+                                                                    <td className="py-2 text-gray-400 font-bold">{idx + 1}</td>
+                                                                    <td className="py-2 text-white font-bold">{s.weight} kg</td>
+                                                                    <td className="py-2 text-white font-bold">{s.reps}</td>
+                                                                    <td className="py-2 text-right">
+                                                                        <button onClick={() => deleteWorkout(s.id)} className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12} /></button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                                                    {sets.map(s => (
+                                                        <React.Fragment key={s.id}>
+                                                            <div className="bg-black/20 rounded-lg p-2 relative group">
+                                                                <p className="text-[10px] text-gray-500">時間</p>
+                                                                <p className="font-bold text-white">{s.time} min</p>
+                                                                <button onClick={() => deleteWorkout(s.id)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={8} /></button>
+                                                            </div>
+                                                            <div className="bg-black/20 rounded-lg p-2">
+                                                                <p className="text-[10px] text-gray-500">速度</p>
+                                                                <p className="font-bold text-white">{s.speed} km/h</p>
+                                                            </div>
+                                                            <div className="bg-black/20 rounded-lg p-2">
+                                                                <p className="text-[10px] text-gray-500">傾斜</p>
+                                                                <p className="font-bold text-white">{s.incline} %</p>
+                                                            </div>
+                                                        </React.Fragment>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ));
+                            })()}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right Column: Input & Log */}
@@ -465,49 +631,128 @@ const Health = ({ user }) => {
 
                     {/* Workout Input */}
                     <div className="glass-card p-6">
-                        <h3 className="font-bold mb-4 flex items-center gap-2"><Flame size={16} className="text-red-400" /> トレーニング</h3>
-                        <div className="space-y-3">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold flex items-center gap-2"><Flame size={16} className="text-red-400" /> トレーニング</h3>
+                            {isTimerRunning && (
+                                <div className="flex items-center gap-2 bg-red-500/20 text-red-300 px-3 py-1 rounded-full animate-pulse">
+                                    <Activity size={14} />
+                                    <span className="text-sm font-bold font-mono">{Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-4">
                             <div className="flex bg-gray-800/50 rounded-lg p-1">
-                                <button onClick={() => setWorkoutForm({ ...workoutForm, type: 'strength' })} className={`flex-1 py-1 text-xs rounded ${workoutForm.type === 'strength' ? 'bg-purple-500/20 text-purple-300' : 'text-gray-500'}`}>筋トレ</button>
-                                <button onClick={() => setWorkoutForm({ ...workoutForm, type: 'cardio' })} className={`flex-1 py-1 text-xs rounded ${workoutForm.type === 'cardio' ? 'bg-orange-500/20 text-orange-300' : 'text-gray-500'}`}>有酸素</button>
+                                <button onClick={() => setWorkoutForm({ ...workoutForm, type: 'strength' })} className={`flex-1 py-1 text-xs rounded transition-all ${workoutForm.type === 'strength' ? 'bg-purple-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>筋トレ</button>
+                                <button onClick={() => setWorkoutForm({ ...workoutForm, type: 'cardio' })} className={`flex-1 py-1 text-xs rounded transition-all ${workoutForm.type === 'cardio' ? 'bg-orange-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>有酸素</button>
                             </div>
 
                             <div className="relative">
                                 {isCustomExercise ? (
                                     <div className="flex gap-2">
                                         <input type="text" placeholder="新しい種目" value={newExerciseName} onChange={e => setNewExerciseName(e.target.value)} className="input-dark flex-1" autoFocus />
-                                        <button onClick={() => setIsCustomExercise(false)} className="text-gray-400"><X size={16} /></button>
+                                        <button onClick={() => setIsCustomExercise(false)} className="text-gray-400 p-2 hover:bg-white/5 rounded-full transition-colors"><X size={16} /></button>
                                     </div>
                                 ) : (
-                                    <select value={workoutForm.exercise} onChange={e => e.target.value === 'custom' ? setIsCustomExercise(true) : setWorkoutForm({ ...workoutForm, exercise: e.target.value })} className="input-dark w-full">
-                                        <option value="" disabled>種目を選択</option>
+                                    <select value={workoutForm.exercise} onChange={e => e.target.value === 'custom' ? setIsCustomExercise(true) : setWorkoutForm({ ...workoutForm, exercise: e.target.value })} className="input-dark w-full appearance-none pr-10">
+                                        <option value="" disabled>種目を選択してください</option>
                                         {exercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
-                                        <option value="custom">+ カスタム追加...</option>
+                                        <option value="custom" className="text-purple-400 font-bold">+ カスタム種目を追加</option>
                                     </select>
                                 )}
                             </div>
 
+                            {/* Last Record Display */}
+                            {workoutForm.type === 'strength' && lastRecord && (
+                                <div className="bg-white/5 rounded-xl p-3 border border-white/10 animate-fade-in">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Last Record: {lastRecord.date}</span>
+                                        <button onClick={() => {/* TODO: History popup */ }} className="text-[10px] text-blue-400 hover:underline">履歴を見る</button>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {lastRecord.sets.map((s, idx) => (
+                                            <div key={idx} className="flex justify-between text-[11px] text-gray-300 font-mono">
+                                                <span>SET {idx + 1}</span>
+                                                <span>{s.weight}kg × {s.reps}reps</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {workoutForm.type === 'strength' ? (
-                                <div className="grid grid-cols-3 gap-2">
-                                    <input type="number" placeholder="kg" value={workoutForm.weight} onChange={e => setWorkoutForm({ ...workoutForm, weight: e.target.value })} className="input-dark text-center" />
-                                    <input type="number" placeholder="セット" value={workoutForm.sets} onChange={e => setWorkoutForm({ ...workoutForm, sets: e.target.value })} className="input-dark text-center" />
-                                    <input type="number" placeholder="レップ" value={workoutForm.reps} onChange={e => setWorkoutForm({ ...workoutForm, reps: e.target.value })} className="input-dark text-center" />
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-12 gap-2 text-[10px] text-gray-500 font-bold uppercase px-1">
+                                        <div className="col-span-1 text-center">#</div>
+                                        <div className="col-span-4 text-center">重さ (kg)</div>
+                                        <div className="col-span-4 text-center">回数</div>
+                                        <div className="col-span-3 text-center">操作</div>
+                                    </div>
+
+                                    <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                                        {workoutForm.sets.map((set, idx) => (
+                                            <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-black/10 p-2 rounded-lg border border-white/5 group">
+                                                <div className="col-span-1 text-center text-xs font-bold text-gray-600">{idx + 1}</div>
+                                                <div className="col-span-4">
+                                                    <input type="number" step="0.5" placeholder="0.0" value={set.weight} onChange={e => updateSetInForm(idx, 'weight', e.target.value)} className="w-full bg-transparent text-center text-sm font-bold text-white focus:outline-none" />
+                                                </div>
+                                                <div className="col-span-4">
+                                                    <input type="number" placeholder="0" value={set.reps} onChange={e => updateSetInForm(idx, 'reps', e.target.value)} className="w-full bg-transparent text-center text-sm font-bold text-white focus:outline-none" />
+                                                </div>
+                                                <div className="col-span-3 flex justify-center">
+                                                    <button onClick={() => removeSetFromForm(idx)} className="text-gray-700 hover:text-red-400 transition-colors">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <button onClick={addSetToForm} className="w-full py-2 border border-dashed border-white/10 rounded-lg text-xs text-gray-500 hover:text-gray-300 hover:border-white/20 transition-all">
+                                        + セットを追加
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-3 gap-2">
-                                    <input type="number" placeholder="分" value={workoutForm.time} onChange={e => setWorkoutForm({ ...workoutForm, time: e.target.value })} className="input-dark text-center" />
-                                    <input type="number" placeholder="km/h" value={workoutForm.speed} onChange={e => setWorkoutForm({ ...workoutForm, speed: e.target.value })} className="input-dark text-center" />
-                                    <input type="number" placeholder="傾斜%" value={workoutForm.incline} onChange={e => setWorkoutForm({ ...workoutForm, incline: e.target.value })} className="input-dark text-center" />
+                                    <div>
+                                        <label className="text-[10px] text-gray-500 block mb-1 px-1">時間 (分)</label>
+                                        <input type="number" placeholder="0" value={workoutForm.time} onChange={e => setWorkoutForm({ ...workoutForm, time: e.target.value })} className="input-dark w-full text-center font-bold" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-gray-500 block mb-1 px-1">速度 (km/h)</label>
+                                        <input type="number" step="0.1" placeholder="0.0" value={workoutForm.speed} onChange={e => setWorkoutForm({ ...workoutForm, speed: e.target.value })} className="input-dark w-full text-center font-bold" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-gray-500 block mb-1 px-1">傾斜 (%)</label>
+                                        <input type="number" placeholder="0" value={workoutForm.incline} onChange={e => setWorkoutForm({ ...workoutForm, incline: e.target.value })} className="input-dark w-full text-center font-bold" />
+                                    </div>
                                 </div>
                             )}
-                            <button onClick={handleWorkoutSubmit} className="btn-primary w-full">記録する</button>
+
+                            <button onClick={handleWorkoutSubmit} className="btn-primary w-full py-3 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
+                                ワークアウトを保存する
+                            </button>
+
+                            {/* Rest Timer Quick Buttons */}
+                            {workoutForm.type === 'strength' && (
+                                <div className="flex gap-2">
+                                    <button onClick={() => startTimer(60)} className="flex-1 py-1 text-[10px] font-bold bg-white/5 rounded border border-white/10 text-gray-400 hover:text-white hover:bg-white/10">60s 休憩</button>
+                                    <button onClick={() => startTimer(90)} className="flex-1 py-1 text-[10px] font-bold bg-white/5 rounded border border-white/10 text-gray-400 hover:text-white hover:bg-white/10">90s 休憩</button>
+                                    <button onClick={() => { setIsTimerRunning(false); setTimer(0); }} className="px-3 py-1 text-[10px] font-bold bg-red-900/10 rounded border border-red-500/20 text-red-400">STOP</button>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="mt-4 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                        {/* Recent Items Preview */}
+                        <div className="mt-6 pt-6 border-t border-white/5 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                            <h4 className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2 px-1">最近のログ</h4>
                             {workouts && workouts.slice(0, 5).map(w => (
-                                <div key={w.id} className="p-2 rounded bg-white/5 flex justify-between items-center text-xs">
-                                    <span className="text-gray-300">{w.exercise}</span>
-                                    <button onClick={() => deleteWorkout(w.id)} className="text-gray-600 hover:text-red-400"><X size={12} /></button>
+                                <div key={w.id} className="p-3 rounded-xl bg-white/5 flex justify-between items-center group hover:bg-white/10 transition-all border border-transparent hover:border-white/10">
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-bold text-white">{w.exercise}</span>
+                                        <span className="text-[10px] text-gray-500">{w.date} • {w.type === 'strength' ? `${w.weight}kg × ${w.reps}` : `${w.time}min`}</span>
+                                    </div>
+                                    <button onClick={() => deleteWorkout(w.id)} className="text-gray-700 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
                                 </div>
                             ))}
                         </div>

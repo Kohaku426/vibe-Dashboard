@@ -93,6 +93,7 @@ const Dashboard = ({ user }) => {
     const events = Array.isArray(eventsData) ? eventsData : [];
 
     const [geminiPrompt, setGeminiPrompt] = useState('');
+    const [refreshKey, setRefreshKey] = useState(0);
 
     // --- Process Data ---
 
@@ -361,8 +362,18 @@ const Dashboard = ({ user }) => {
                 </div>
 
                 {/* Widget 2: Google Calendar Embed (Month View) */}
-                <div className="glass-card glass-hover p-0 relative overflow-hidden group flex flex-col md:col-span-2 h-[450px]"> {/* Increased Height */}
+                <div className="glass-card glass-hover p-0 relative overflow-hidden group flex flex-col md:col-span-2 h-[500px] md:h-[450px]">
+                    <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                            onClick={() => setRefreshKey(prev => prev + 1)}
+                            className="bg-black/40 hover:bg-black/60 text-white p-2 rounded-lg backdrop-blur-sm transition-all"
+                            title="カレンダーを更新"
+                        >
+                            <Zap size={14} className="text-yellow-400" />
+                        </button>
+                    </div>
                     <iframe
+                        key={refreshKey}
                         src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=Asia%2FTokyo&bgcolor=%23ffffff&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&src=ja.japanese%23holiday%40group.v.calendar.google.com&color=%230B8043"
                         style={{ border: 0, width: '100%', height: '100%', filter: 'invert(0.95) hue-rotate(180deg)' }}
                         frameBorder="0"

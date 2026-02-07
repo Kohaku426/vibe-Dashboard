@@ -139,19 +139,19 @@ const Calendar = () => {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in h-[calc(100vh-140px)] flex flex-col items-stretch relative pb-10">
+        <div className="space-y-6 animate-fade-in md:h-[calc(100vh-140px)] flex flex-col items-stretch relative pb-10">
             <Link to="/" className="absolute top-0 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all z-10">
                 <Home size={20} />
             </Link>
 
             <header className="flex-none flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">Calendar & Work</h1>
-                    <p className="text-gray-400 mt-1">予定とシフトの管理</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Calendar & Work</h1>
+                    <p className="text-xs md:text-gray-400 mt-1">予定とシフトの管理</p>
                 </div>
                 <button
                     onClick={() => setShowSettings(true)}
-                    className="glass px-4 py-2 rounded-lg flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
+                    className="glass px-3 py-1.5 md:px-4 md:py-2 rounded-lg flex items-center gap-2 text-gray-300 hover:text-white transition-colors text-xs md:text-base"
                 >
                     <Settings size={18} /> 設定
                 </button>
@@ -245,9 +245,9 @@ const Calendar = () => {
                 </div>
             )}
 
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-0">
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 min-h-0">
                 {/* Calendar View */}
-                <div className="lg:col-span-2 glass-card p-6 flex flex-col h-full">
+                <div className="lg:col-span-2 glass-card p-4 md:p-6 flex flex-col h-full min-h-[400px] md:min-h-0">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -262,7 +262,7 @@ const Calendar = () => {
                     {/* Grid Header */}
                     <div className="grid grid-cols-7 mb-2">
                         {['日', '月', '火', '水', '木', '金', '土'].map(day => (
-                            <div key={day} className="text-center text-xs text-gray-500 font-medium uppercase py-1">
+                            <div key={day} className="text-center text-[10px] md:text-xs text-gray-500 font-medium uppercase py-1">
                                 {day}
                             </div>
                         ))}
