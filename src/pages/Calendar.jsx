@@ -81,7 +81,8 @@ const Calendar = ({ user }) => {
                 break: Number(shiftForm.break)
             });
         } catch (err) {
-            alert('シフトの保存に失敗しました');
+            console.error('[Calendar] saveShift error:', err);
+            alert('シフトの保存に失敗しました: ' + (err.message || '不明なエラー'));
         }
     };
 
@@ -100,7 +101,8 @@ const Calendar = ({ user }) => {
             });
             setEventForm({ ...eventForm, title: '', start_time: '', end_time: '', is_all_day: false });
         } catch (err) {
-            alert('予定の保存に失敗しました');
+            console.error('[Calendar] saveEvent error:', err);
+            alert('予定の保存に失敗しました: ' + (err.message || '不明なエラー'));
         }
     };
 
