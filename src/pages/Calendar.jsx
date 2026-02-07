@@ -50,7 +50,7 @@ const Calendar = ({ user }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [inputType, setInputType] = useState('shift'); // 'shift' or 'event'
     const [shiftForm, setShiftForm] = useState({ start: '09:00', end: '17:00', break: '60' });
-    const [eventForm, setEventForm] = useState({ title: '', start_time: '', end_time: '', category_id: '' });
+    const [eventForm, setEventForm] = useState({ title: '', start_time: '', end_time: '', category_id: '', is_all_day: false });
 
     // Calendar generation
     const monthStart = startOfMonth(currentDate);
@@ -93,11 +93,12 @@ const Calendar = ({ user }) => {
             await addEvent({
                 date: format(selectedDate, 'yyyy-MM-dd'),
                 title: eventForm.title,
-                start_time: eventForm.start_time || null,
-                end_time: eventForm.end_time || null,
+                start_time: eventForm.is_all_day ? null : (eventForm.start_time || null),
+                end_time: eventForm.is_all_day ? null : (eventForm.end_time || null),
+                is_all_day: eventForm.is_all_day,
                 category_id: eventForm.category_id || null
             });
-            setEventForm({ ...eventForm, title: '', start_time: '', end_time: '' });
+            setEventForm({ ...eventForm, title: '', start_time: '', end_time: '', is_all_day: false });
         } catch (err) {
             alert('予定の保存に失敗しました');
         }
@@ -296,9 +297,30 @@ const Calendar = ({ user }) => {
                                 <form onSubmit={handleSaveEvent} className="space-y-3 animate-in fade-in slide-in-from-top-2">
                                     <input type="text" placeholder="予定名" value={eventForm.title} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full input-dark px-3 py-2 text-sm" />
                                     <div className="grid grid-cols-2 gap-2">
-                                        <input type="time" value={eventForm.start_time} onChange={e => setEventForm({ ...eventForm, start_time: e.target.value })} className="input-dark px-2 py-1.5 text-xs" />
-                                        <input type="time" value={eventForm.end_time} onChange={e => setEventForm({ ...eventForm, end_time: e.target.value })} className="input-dark px-2 py-1.5 text-xs" />
+                                        <input
+                                            type="time"
+                                            value={eventForm.start_time}
+                                            onChange={e => setEventForm({ ...eventForm, start_time: e.target.value })}
+                                            className="input-dark px-2 py-1.5 text-xs"
+                                            disabled={eventForm.is_all_day}
+                                        />
+                                        <input
+                                            type="time"
+                                            value={eventForm.end_time}
+                                            onChange={e => setEventForm({ ...eventForm, end_time: e.target.value })}
+                                            className="input-dark px-2 py-1.5 text-xs"
+                                            disabled={eventForm.is_all_day}
+                                        />
                                     </div>
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <input
+                                            type="checkbox"
+                                            checked={eventForm.is_all_day}
+                                            onChange={e => setEventForm({ ...eventForm, is_all_day: e.target.checked })}
+                                            className="w-3 h-3 rounded border-white/10 bg-black/40 text-blue-500 focus:ring-blue-500/50"
+                                        />
+                                        <span className="text-[10px] text-gray-400 group-hover:text-white transition-colors">終日の予定</span>
+                                    </label>
                                     <select value={eventForm.category_id} onChange={e => setEventForm({ ...eventForm, category_id: e.target.value })} className="w-full input-dark px-3 py-2 text-xs">
                                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
@@ -330,19 +352,21 @@ const Calendar = ({ user }) => {
                                     </div>
                                 )}
                                 {selectedEvents.map(e => (
-                                    <div key={e.id} className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-xl group hover:border-white/20 transition-all">
-                                        <div className="flex items-center gap-3">
-                                            <div className={clsx("w-1 h-8 rounded-full", getCategoryColor(e.category_id))} />
-                                            <div>
-                                                <p className="text-sm font-bold text-white leading-tight">{e.title}</p>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    {e.start_time && <span className="text-[10px] text-gray-500 font-mono flex items-center gap-1"><Clock size={10} /> {e.start_time}{e.end_time && ` - ${e.end_time}`}</span>}
-                                                    <span className="text-[9px] text-gray-600 uppercase font-bold tracking-tighter">{getCategoryName(e.category_id)}</span>
-                                                </div>
+                                    <li key={e.id} className="group relative bg-white/5 border border-white/5 rounded-xl p-3 hover:bg-white/10 transition-all">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className={clsx("w-2 h-2 rounded-full", getCategoryColor(e.category_id))} />
+                                                <h4 className="text-sm font-bold text-white leading-tight">{e.title}</h4>
                                             </div>
+                                            <button onClick={() => removeEvent(e.id)} className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
                                         </div>
-                                        <button onClick={() => removeEvent(e.id)} className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14} /></button>
-                                    </div>
+                                        <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                                            <span className="flex items-center gap-1">
+                                                <Clock size={10} />
+                                                {e.is_all_day ? '終日' : (e.start_time ? `${e.start_time} - ${e.end_time || ''}` : '時間未設定')}
+                                            </span>
+                                        </div>
+                                    </li>
                                 ))}
                                 {!selectedShift && selectedEvents.length === 0 && (
                                     <div className="text-center py-10">
